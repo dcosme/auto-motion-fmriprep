@@ -1,0 +1,666 @@
+---
+title: "auto-motion-fmriprep"
+author: "Dani Cosme"
+date: "5/6/2018"
+output:
+  html_document:
+    code_folding: hide
+    highlight: tango
+    theme: united
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, error = FALSE)
+```
+
+# load packages and config file
+```{r, warning=FALSE, message=FALSE}
+# load/install packages
+osuRepo = 'http://ftp.osuosl.org/pub/cran/'
+
+if(!require(tidyverse)){
+  install.packages('tidyverse',repos=osuRepo)
+}
+if(!require(caret)){
+  install.packages('caret',repos=osuRepo)
+}
+if(!require(caTools)){
+  install.packages('caTools',repos=osuRepo)
+}
+if(!require(reshape2)){
+  install.packages('reshape2',repos=osuRepo)
+}
+if(!require(PRROC)){
+  install.packages('PRROC',repos=osuRepo)
+}
+if(!require(purrr)){
+  install.packages('purrr',repos=osuRepo)
+}
+if(!require(pROC)){
+  install.packages('pROC',repos=osuRepo)
+}
+if(!require(doParallel)){
+  install.packages('doParallel',repos=osuRepo)
+}
+
+# source the config file
+source('config.R')
+```
+
+# load confound files
+```{r, message=FALSE}
+file_list = list.files(confoundDir, pattern = 'confounds.tsv', recursive = TRUE)
+
+if (!file.exists("~/Documents/code/auto-motion-fmriprep/tag_tds.csv")) {
+  for (file in file_list){
+    # if the merged dataset doesn't exist, create it
+    if (!exists('dataset')){
+      filePattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_")
+      dataset = read_tsv(paste0(confoundDir, file)) %>% 
+        mutate(file = file) %>%
+        extract(file, c('subjectID', 'wave', 'task', 'run'),
+                file.path('.*', 'sub-.*','ses-wave.*', 'func', filePattern)) %>%
+        mutate(wave = as.integer(wave),
+               run = as.integer(run),
+               stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", NA, stdDVARS)),
+               `non-stdDVARS` = as.numeric(ifelse(`non-stdDVARS` %in% "n/a", NA, `non-stdDVARS`)),
+               `vx-wisestdDVARS` = as.numeric(ifelse(`vx-wisestdDVARS` %in% "n/a", NA, `vx-wisestdDVARS`)),
+               FramewiseDisplacement = as.numeric(ifelse(FramewiseDisplacement %in% "n/a", NA, FramewiseDisplacement)),
+               volume = row_number()) %>%
+        select(subjectID, wave, task, run, volume, everything())
+    }
+  
+    # if the merged dataset does exist, append to it
+    else {
+      filePattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_")
+      tmp = read_tsv(paste0(confoundDir, file)) %>% 
+        mutate(file = file) %>%
+        extract(file, c('subjectID', 'wave', 'task', 'run'),
+                file.path('sub-.*','ses-wave.*', 'func', filePattern)) %>%
+        mutate(wave = as.integer(wave),
+               run = as.integer(run),
+               stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", NA, stdDVARS)),
+               `non-stdDVARS` = as.numeric(ifelse(`non-stdDVARS` %in% "n/a", NA, `non-stdDVARS`)),
+               `vx-wisestdDVARS` = as.numeric(ifelse(`vx-wisestdDVARS` %in% "n/a", NA, `vx-wisestdDVARS`)),
+               FramewiseDisplacement = as.numeric(ifelse(FramewiseDisplacement %in% "n/a", NA, FramewiseDisplacement)),
+               volume = row_number()) %>%
+        select(subjectID, wave, task, run, volume, everything())
+      dataset = bind_rows(dataset, tmp)
+      rm(tmp)
+    }
+  write.csv(dataset, "~/Documents/code/auto-motion-fmriprep/tag_tds.csv", row.names = FALSE)
+  }
+} else {
+  dataset = read.csv("~/Documents/code/auto-motion-fmriprep/tag_tds.csv", stringsAsFactors = FALSE)
+}
+
+dataset = dataset %>%
+  mutate(sub.run = paste(subjectID, task, run, sep = "_"))
+```
+
+# load hand coded data and merge
+```{r}
+coded.tds = read.csv("~/Documents/code/auto-motion-fmriprep/tds_artifacts.csv") %>%
+  extract(run, c("task", "run"), "([a-z]+)([0-9]{1})") %>%
+  mutate(run = as.integer(run),
+         sub.run = paste(subjectID, task, run, sep = "_"),
+         subjectID = as.character(subjectID),
+         no.artifacts = ifelse(intensity == 0 & striping == 0, 1, NA)) %>%
+  select(-fsl.volume)
+
+coded.tag = read.csv("~/Documents/code/auto-motion-fmriprep/tag_artifacts.csv") %>%
+  extract(run, c("task", "run"), "([A-Z]+)([0-9]{1})") %>%
+  mutate(run = as.integer(run),
+         sub.run = paste(subjectID, task, run, sep = "_"),
+         volume = fsl.volume + 1) %>%
+  select(-fsl.volume) 
+
+coded = bind_rows(coded.tag, coded.tds)
+
+sub_run = unique(coded$sub.run)
+
+joined = left_join(dataset, coded, by = c("subjectID", "task", "run", "volume", "sub.run")) %>%
+  mutate(artifact = ifelse(striping == 2, 1, 0),
+         artifact = ifelse(is.na(artifact), 0, artifact),
+         X.diff = X - lag(X),
+         Y.diff = Y - lag(Y),
+         Z.diff = Z - lag(Z),
+         RotX.diff = RotX - lag(RotX),
+         RotY.diff = RotX - lag(RotY),
+         RotZ.diff = RotX - lag(RotZ)) %>%
+  filter(sub.run %in% sub_run) %>%
+  select(subjectID, wave, task, run, volume, artifact, striping, intensity, everything())
+```
+
+# visualize confounds
+## distributions
+```{r, fig.width = 10, fig.height = 15}
+# data.plot = joined %>%
+#   gather(feature, value, -c(subjectID, wave, task, run, volume, artifact, striping, intensity, sub.run, no.artifacts)) %>%
+#   filter(!grepl("Cosine|Steady", feature))
+
+# ggplot(data.plot, aes(1, value)) +
+#   geom_boxplot() +
+#   geom_jitter(alpha = .02) + 
+#   facet_wrap(~feature, scales = "free", ncol = 5) + 
+#   theme_minimal()
+
+# ggplot(data.plot, aes(value)) + 
+#   geom_density(fill = wesanderson::wes_palette("Zissou1", 1, "continuous")) +
+#   facet_wrap(~feature, scales = "free", ncol = 5) + 
+#   theme_minimal()
+```
+
+## scatter plots
+```{r, fig.width=30, fig.height=30, warning=FALSE, error=FALSE, message=FALSE}
+# p = joined %>%
+#   select(-c(subjectID, wave, task, run, volume, no.artifacts, sub.run, starts_with("NonSteady"), starts_with("Cosine"))) %>%
+#   mutate(artifact = as.factor(artifact)) %>%
+#   ggpairs(aes(colour = artifact, alpha = 0.01)) +
+#     theme_minimal()
+# ggsave(p, file = 'plots/correlations.png', height = 30, width = 30)
+```
+
+## correlate confounds
+```{r, fig.width=12, fig.height=12}
+# define color palette
+palette = c("#0071CF", "#FFD700", "#E2261C")
+
+# subset and matrix-ify
+dataset.corr = joined %>%
+  select(-c(subjectID, wave, task, run, volume, no.artifacts, striping, intensity, sub.run, starts_with("NonSteady"), starts_with("Cosine"))) %>%
+  cor(., use = "pairwise.complete.obs") %>%
+  melt(.)
+
+# plot the data
+ggplot(dataset.corr, aes(as.factor(Var2), as.factor(Var1), fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = palette[1], high = palette[3], mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+   name = "correlation") +
+  labs(x = "",
+       y = "") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 10, hjust = 1)) + 
+  geom_text(aes(label = round(value,1)), size = 2.5)
+```
+
+## subject level
+```{r, fig.width = 15, fig.height = 40} 
+# subs = unique(joined$subjectID)[1:10]
+
+# data.sub = data.plot %>%
+#   mutate(sort.order = ifelse(grepl("X|Y|Z|Rot|Displacement", feature), 1,
+#                       ifelse(grepl("DVARS", feature), 2,
+#                       ifelse(grepl("CSF|WhiteMatter|Signal", feature), 3,
+#                       ifelse(grepl("Comp", feature), 4, NA))))) %>%
+#   filter(subjectID %in% subs)
+
+# nada = data.sub %>% 
+#   group_by(subjectID) %>%
+#     do({
+#       plot = ggplot(., aes(volume, value)) + 
+#         geom_line(aes(color = as.factor(sort.order)), size = .25, show.legend = FALSE) +
+#         facet_grid(reorder(feature, sort.order) ~ task + run, scales = "free") +
+#         scale_color_manual(values = wesanderson::wes_palette("Zissou1", 4, type = "continuous")) +
+#         labs(title = .$subjectID[[1]]) +
+#         theme_minimal()
+#       print(plot)
+#       ggsave(plot, file = paste0(plotDir,.$subjectID[[1]],'.pdf'), height = 40, width = 15)
+#       data.frame()
+#     })
+```
+
+# describe classes
+```{r}
+table(joined$artifact) / nrow(joined)
+```
+
+# machine learning
+## split the data 
+```{r}
+set.seed(101) 
+ml.data = joined %>%
+  select(-c(subjectID, wave, task, run, volume, no.artifacts, sub.run, striping, intensity, starts_with("NonSteady"), starts_with("Cosine"))) %>%
+  mutate(artifact = as.factor(ifelse(artifact == 1, "yes", "no")))
+
+# replace NAs with 0
+ml.data[is.na(ml.data)] = 0
+
+# subset dataset into development and holdout samples
+sample.dev = sample.split(ml.data$artifact, SplitRatio = .8)
+dev = subset(ml.data, sample.dev == TRUE)
+holdout = subset(ml.data, sample.dev == FALSE)
+
+# subset development sample into training and testing sets
+sample = sample.split(dev$artifact, SplitRatio = .75)
+training = subset(dev, sample == TRUE)
+testing = subset(dev, sample == FALSE)
+```
+
+## run models
+
+Run the best performing models  
+* SVM
+* RF
+* RF with derivatives
+
+### RF with derivatives for realignment parameters
+```{r}
+model = "models/rf_diffs.rds"
+
+if (file.exists(model)) {
+  rf_diffs = readRDS(model)
+  
+} else {
+  # turn on parallelization
+  cl <- makePSOCKcluster(5)
+  registerDoParallel(cl)
+  
+  # set seed
+  set.seed(1995)
+  
+  # set control function
+  ctrl = trainControl(method = "repeatedcv",
+                      number = 10,
+                      repeats = 5,
+                      summaryFunction = twoClassSummary,
+                      savePredictions = TRUE,
+                      classProbs = TRUE)
+  timestamp()
+  rf_diffs = train(artifact ~ .,
+                   data = training,
+                   method = "rf",
+                   metric = "ROC",
+                   trControl = ctrl,  
+                   preProcess = c("center","scale"))
+  timestamp()
+  saveRDS(rf_diffs, "models/rf_diffs.rds")
+  
+  # stop parallelization
+  stopCluster(cl)
+  
+}
+```
+
+### exclude derivatives and re-split
+```{r}
+set.seed(101) 
+ml.data2 = joined %>%
+  select(-c(subjectID, wave, task, run, volume, no.artifacts, sub.run, striping, intensity, contains("diff"), starts_with("NonSteady"), starts_with("Cosine"))) %>%
+  mutate(artifact = as.factor(ifelse(artifact == 1, "yes", "no")))
+
+# replace NAs with 0
+ml.data2[is.na(ml.data2)] = 0
+
+# subset dataset into development and holdout samples
+sample.dev2 = sample.split(ml.data2$artifact, SplitRatio = .8)
+dev2 = subset(ml.data2, sample.dev == TRUE)
+holdout2 = subset(ml.data2, sample.dev == FALSE)
+
+# subset development sample into training and testing sets
+sample2 = sample.split(dev2$artifact, SplitRatio = .75)
+training2 = subset(dev2, sample == TRUE)
+testing2 = subset(dev2, sample == FALSE)
+```
+
+### RF model without derivatives
+```{r}
+model = "models/rf.rds"
+
+if (file.exists(model)) {
+  rf_diffs = readRDS(model)
+  
+} else {
+  # turn on parallelization
+  cl <- makePSOCKcluster(5)
+  registerDoParallel(cl)
+  
+  # set seed
+  set.seed(1995)
+  
+  # set control function
+  ctrl = trainControl(method = "repeatedcv",
+                      number = 10,
+                      repeats = 5,
+                      summaryFunction = twoClassSummary,
+                      savePredictions = TRUE,
+                      classProbs = TRUE)
+  
+  # use rf_diff seeds
+  ctrl$seeds = rf_diffs$control$seeds
+  
+  # run model
+  timestamp()
+  rf = train(artifact ~ .,
+                   data = training2,
+                   method = "rf",
+                   metric = "ROC",
+                   trControl = ctrl,  
+                   preProcess = c("center","scale"))
+  timestamp()
+  saveRDS(rf, "models/rf.rds")
+  
+  # stop parallelization
+  stopCluster(cl)
+  
+}
+```
+
+### SVM model with derivatives
+```{r}
+model = "models/svm_diffs.rds"
+
+if (file.exists(model)) {
+  svm_diffs = readRDS(model)
+  
+} else {
+  # turn on parallelization
+  cl <- makePSOCKcluster(5)
+  registerDoParallel(cl)
+  
+  # set seed
+  set.seed(1995)
+  
+  # set control function
+  ctrl = trainControl(method = "repeatedcv",
+                      number = 10,
+                      repeats = 5,
+                      summaryFunction = twoClassSummary,
+                      savePredictions = TRUE,
+                      classProbs = TRUE)
+  # use rf_diff seeds
+  ctrl$seeds = rf_diffs$control$seeds
+  
+  # run model
+  timestamp()
+  svm_diffs = train(artifact ~ .,
+                   data = training,
+                   method = "svmRadial",
+                   metric = "ROC",
+                   trControl = ctrl,  
+                   preProcess = c("center","scale"))
+  timestamp()
+  saveRDS(svm_diffs, "models/svm_diffs.rds")
+  
+  # stop parallelization
+  stopCluster(cl)
+  
+}
+```
+
+### SVM model without derivatives
+```{r}
+model = "models/svm.rds"
+
+if (file.exists(model)) {
+  svm = readRDS(model)
+  
+} else {
+  # turn on parallelization
+  cl <- makePSOCKcluster(5)
+  registerDoParallel(cl)
+  
+  # set seed
+  set.seed(1995)
+  
+  # set control function
+  ctrl = trainControl(method = "repeatedcv",
+                      number = 10,
+                      repeats = 5,
+                      summaryFunction = twoClassSummary,
+                      savePredictions = TRUE,
+                      classProbs = TRUE)
+  # use rf_diff seeds
+  ctrl$seeds = rf_diffs$control$seeds
+  
+  # run model
+  timestamp()
+  svm = train(artifact ~ .,
+                   data = training2,
+                   method = "svmRadial",
+                   metric = "ROC",
+                   trControl = ctrl,  
+                   preProcess = c("center","scale"))
+  timestamp()
+  saveRDS(svm, "models/svm.rds")
+  
+  # stop parallelization
+  stopCluster(cl)
+  
+}
+```
+
+## assess models in testing set
+Kudos to [https://rstudio-pubs-static.s3.amazonaws.com/299602_6834adf3be1548a1b5c04a45c7d79c77.html](https://rstudio-pubs-static.s3.amazonaws.com/299602_6834adf3be1548a1b5c04a45c7d79c77.html)
+```{r}
+# define roc function
+test_roc = function(model, data) {
+  roc(data$artifact,
+      predict(model, data, type = "prob")[, "yes"])
+}
+
+# make model lists
+model_list = list(RF = rf,
+                  RF.diff = rf_diffs,
+                  SVM = svm,
+                  SVM.diff = svm_diffs)
+
+model_list_roc = model_list %>%
+  map(test_roc, data = testing)
+
+# AUC
+model_list_roc %>%
+  map(auc)
+
+# confusion matrix
+confusionMatrix(testing$artifact, predict(rf, testing))
+confusionMatrix(testing$artifact, predict(rf_diffs, testing))
+confusionMatrix(testing$artifact, predict(svm, testing))
+confusionMatrix(testing$artifact, predict(svm_diffs, testing))
+
+# variable importance
+varImp(rf)
+varImp(rf_diffs)
+varImp(svm)
+varImp(svm_diffs)
+```
+
+## plot ROC curves
+```{r}
+results_list_roc = list(NA)
+num_mod = 1
+
+for (the_roc in model_list_roc) {
+  
+  results_list_roc[[num_mod]] = 
+    data_frame(TPR = the_roc$sensitivities,
+               FPR = 1 - the_roc$specificities,
+               Model = names(model_list)[num_mod])
+  
+  num_mod = num_mod + 1
+  
+}
+
+results_df_roc = bind_rows(results_list_roc)
+
+results_df_roc %>% 
+  ggplot(aes(FPR, TPR, color = Model)) +
+  geom_line(size = 1, alpha = .75) +
+  scale_color_manual(values = wesanderson::wes_palette("Darjeeling1", 4, "continuous")) +
+  theme_minimal() + 
+  geom_abline(intercept = 0, 
+              slope = 1, 
+              color = "gray37", 
+              size = 1)
+```
+
+## apply models to holdout sample
+```{r}
+
+```
+
+# Plot RF predictions/errors
+```{r}
+# add predictions
+plot.train = joined %>%
+  mutate(artifact = as.factor(ifelse(artifact == 1, "yes", "no")))
+plot.train$predicted = predict(rf_diffs, ml.data)
+
+# code predictions
+plot.train = plot.train %>%
+  mutate(hits = ifelse(artifact == "yes" & predicted == "yes", "hit",
+                ifelse(artifact == "no" & predicted == "yes", "false positive",
+                ifelse(artifact == "yes" & predicted == "no", "false negative", NA))),
+         label = ifelse(regexpr('.*', hits), as.character(volume), ''),
+         hits = as.factor(hits))
+
+# plot
+nada = plot.train %>% 
+  group_by(subjectID, task, run) %>%
+    do({
+      plot = ggplot(plot.train, aes(x = volume, y = FramewiseDisplacement)) +
+        geom_line(data = filter(plot.train, subjectID == .$subjectID[[1]] & task == .$task[[1]] & run == .$run[[1]]), size = .25) +
+        geom_point(data = subset(filter(plot.train, subjectID == .$subjectID[[1]] & task == .$task[[1]] & run == .$run[[1]]), !is.na(hits)), aes(color = hits), size = 2.5) +
+        geom_text(data = filter(plot.train, subjectID == .$subjectID[[1]] & task == .$task[[1]] & run == .$run[[1]]), aes(label = label), size = 1.5) +
+        scale_color_manual(values = c(hit = "#3B9AB2", `false negative` = "#EBCC2A", `false positive` = "#F21A00")) +
+        labs(title = paste0(.$subjectID[[1]], "  ", .$task[[1]], "  ", .$run[[1]])) +
+        theme_minimal() +
+        theme(axis.text.x = element_text(size = 6),
+              legend.position = "top", 
+              #legend.justification = c(1, 1),
+              legend.direction = "horizontal",
+              legend.title = element_blank())
+      print(plot)
+      ggsave(plot, file = paste0(plotDir,'predicted/',.$subjectID[[1]],"_",.$task[[1]],"_",.$run[[1]],'.png'), height = 4, width = 6)
+      data.frame()
+    })
+```
+
+# compare ML and standard methods
+## compare accuracies
+```{r}
+# add predictions
+plot.compare = joined %>%
+  mutate(artifact = as.factor(ifelse(artifact == 1, "yes", "no")))
+plot.compare$predicted.ML = predict(orig_rf_diffs, ml.data)
+
+# code predictions
+plot.compare1 = plot.compare %>%
+  mutate(predicted.fd = as.factor(ifelse(FramewiseDisplacement <= 1 | is.na(FramewiseDisplacement), "no", "yes")), # framewise displacement > 1
+         predicted.2mm = as.factor(ifelse(X > 2 | Y > 2 | Z > 2, "yes", "no"))) %>% #XYZ > 2mm
+  gather(method, class, predicted.ML, predicted.fd, predicted.2mm) %>%
+  mutate(hits = ifelse(artifact == "yes" & class == "yes", "hit",
+                ifelse(artifact == "no" & class == "yes", "false positive",
+                ifelse(artifact == "yes" & class == "no", "false negative", NA))),
+         label = ifelse(regexpr('.*', hits), as.character(volume), ''),
+         hits = as.factor(hits))
+
+# confusion matrices
+mats = plot.compare1 %>%
+  spread(method, class)
+
+confusionMatrix(mat$artifact, as.factor(mat$predicted.2mm))
+confusionMatrix(mat$artifact, as.factor(mat$predicted.fd))
+confusionMatrix(mat$artifact, as.factor(mat$predicted.ML))
+```
+
+## plot
+```{r}
+nada = plot.compare1 %>% 
+  group_by(subjectID, task, run) %>%
+    do({
+      plot = ggplot(., aes(x = volume, y = FramewiseDisplacement)) +
+        geom_line(data = filter(plot.compare1, subjectID == .$subjectID[[1]] & task == .$task[[1]] & run == .$run[[1]]), size = .25) +
+        geom_point(data = subset(filter(plot.compare1, subjectID == .$subjectID[[1]] & task == .$task[[1]] & run == .$run[[1]]), !is.na(hits)), aes(color = hits), size = 2.5) +
+        geom_text(data = filter(plot.compare1, subjectID == .$subjectID[[1]] & task == .$task[[1]] & run == .$run[[1]]), aes(label = label), size = 1.5) +
+        facet_grid(method ~ .) +
+        scale_color_manual(values = c(hit = "#3B9AB2", `false negative` = "#EBCC2A", `false positive` = "#F21A00")) +
+        labs(title = paste0(.$subjectID[[1]], "  ", .$task[[1]], "  ", .$run[[1]])) +
+        theme_minimal() +
+        theme(axis.text.x = element_text(size = 6),
+              legend.position = "top", 
+              #legend.justification = c(1, 1),
+              legend.direction = "horizontal",
+              legend.title = element_blank())
+      print(plot)
+      ggsave(plot, file = paste0(plotDir,'predicted/',.$subjectID[[1]],"_",.$task[[1]],"_",.$run[[1]],'.png'), height = 4, width = 6)
+      data.frame()
+    })
+```
+
+# Export rp_txt files
+## 2mm thresholding
+```{r}
+set.seed(151)
+
+# get list of subs with complete SVC runs
+sub_list = dataset %>%
+  filter(task == "SVC") %>%
+  group_by(subjectID, run) %>%
+  summarize(n = n()) %>%
+  spread(run, n) %>%
+  mutate(sum = `1` + `2`) %>%
+  filter(sum == 360) %>%
+  select(subjectID)
+
+# randomly sample 50 subs from list
+sub_sample = sample(sub_list$subjectID, 50)
+
+# add trash regressors
+rps = dataset %>%
+  filter(task == "SVC" & subjectID %in% sub_sample) %>%
+  mutate(X.diff = X - lag(X),
+         Y.diff = Y - lag(Y),
+         Z.diff = Z - lag(Z),
+         RotX.diff = RotX - lag(RotX),
+         RotY.diff = RotX - lag(RotY),
+         RotZ.diff = RotX - lag(RotZ),
+         FD = as.factor(ifelse(FramewiseDisplacement <= 1 | is.na(FramewiseDisplacement), "no", "yes")), # framewise displacement > 1
+         `2MM` = as.factor(ifelse(X > 2 | Y > 2 | Z > 2, "yes", "no"))) #XYZ > 2mm
+
+# recode NAs and apply model
+rps[is.na(rps)] = 0
+rps$ML = predict(orig_rf_diffs, rps)
+
+# gather predictions and select columns
+rps_out = rps %>%
+  gather(method, trash, ML, FD, `2MM`) %>%
+  select(subjectID, run, method, volume, X, Y, Z, RotX, RotY, RotZ, trash) %>%
+  mutate(trash = ifelse(trash == "yes", 1, 0),
+         trash = ifelse(is.na(trash), 0, trash))
+
+# summarize
+rps_out %>%
+  filter(trash == 1) %>%
+  group_by(method) %>%
+  summarize(n = n())
+
+# write files
+# if (writeRP) {
+#   if (!file.exists(rpDir)) {
+#     message(paste0(rpDir, ' does not exist. Creating it...'))
+#     dir.create(rpDir)
+#   }
+#   
+#   rp_files_written = rps_out %>% 
+#     arrange(subjectID, run, volume) %>% 
+#     group_by(subjectID, run, method) %>% 
+#     do({
+#       fname = paste(
+#         rpDir,
+#         'rp_',.$subjectID[[1]],'_SVC',.$run[[1]],'_',.$method[[1]],'.txt',
+#         sep = '')
+#       write.table(
+#         .[,-c(1:4)],
+#         fname,
+#         quote = F,
+#         sep = '   ',
+#         row.names = F,
+#         col.names = F)
+#       data.frame(rp_file_name = fname)
+#     })
+# }
+```
