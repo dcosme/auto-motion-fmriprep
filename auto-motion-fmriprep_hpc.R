@@ -84,7 +84,7 @@ dataset = dataset %>%
 
 # load hand coded data and merge
 
-coded.tds = read.csv(paste0(homeDir,"/tds_artifacts.csv") %>%
+coded.tds = read.csv(paste0(homeDir,"/tds_artifacts.csv")) %>%
   extract(run, c("task", "run"), "([a-z]+)([0-9]{1})") %>%
   mutate(run = as.integer(run),
          sub.run = paste(subjectID, task, run, sep = "_"),
@@ -92,7 +92,7 @@ coded.tds = read.csv(paste0(homeDir,"/tds_artifacts.csv") %>%
          no.artifacts = ifelse(intensity == 0 & striping == 0, 1, NA)) %>%
   select(-fsl.volume)
 
-coded.tag = read.csv(paste0(homeDir,"/tag_artifacts.csv") %>%
+coded.tag = read.csv(paste0(homeDir,"/TAG_artifacts.csv")) %>%
   extract(run, c("task", "run"), "([A-Z]+)([0-9]{1})") %>%
   mutate(run = as.integer(run),
          sub.run = paste(subjectID, task, run, sep = "_"),
@@ -138,12 +138,6 @@ testing = subset(dev, sample == FALSE)
 
 
 ## run models
-
-Run the best performing models  
-* SVM
-* RF
-* RF with derivatives
-
 ### RF with derivatives for realignment parameters
 
 model = paste0(homeDir,"/models/rf_diffs_dev.rds")
@@ -208,7 +202,7 @@ testing2 = subset(dev2, sample == FALSE)
 model = paste0(homeDir,"/models/rf_dev.rds")
 
 if (file.exists(model)) {
-  rf_diffs = readRDS(model)
+  rf = readRDS(model)
   
 } else {
   # turn on parallelization
