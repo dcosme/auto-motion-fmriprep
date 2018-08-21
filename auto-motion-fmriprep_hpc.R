@@ -136,6 +136,9 @@ sample = sample.split(dev$artifact, SplitRatio = .75)
 training = subset(dev, sample == TRUE)
 testing = subset(dev, sample == FALSE)
 
+# turn on parallelization
+cl <- makePSOCKcluster(7)
+registerDoParallel(cl)
 
 ## run models
 ### RF with derivatives for realignment parameters
@@ -146,9 +149,6 @@ if (file.exists(model)) {
   rf_diffs = readRDS(model)
   
 } else {
-  # turn on parallelization
-  cl <- makePSOCKcluster(5)
-  registerDoParallel(cl)
   
   # set seed
   set.seed(1995)
@@ -168,10 +168,7 @@ if (file.exists(model)) {
                    trControl = ctrl,  
                    preProcess = c("center","scale"))
   timestamp()
-  saveRDS(rf_diffs, paste0(homeDir,"/models/rf_diffs_dev.rds"))
-  
-  # stop parallelization
-  stopCluster(cl)
+  saveRDS(rf_diffs, paste0(homeDir,"models/rf_diffs_dev.rds"))
   
 }
 
@@ -199,15 +196,12 @@ testing2 = subset(dev2, sample == FALSE)
 
 ### RF model without derivatives
 
-model = paste0(homeDir,"/models/rf_dev.rds")
+model = paste0(homeDir,"models/rf_dev.rds")
 
 if (file.exists(model)) {
   rf = readRDS(model)
   
 } else {
-  # turn on parallelization
-  cl <- makePSOCKcluster(5)
-  registerDoParallel(cl)
   
   # set seed
   set.seed(1995)
@@ -232,10 +226,7 @@ if (file.exists(model)) {
              trControl = ctrl,  
              preProcess = c("center","scale"))
   timestamp()
-  saveRDS(rf, paste0(homeDir,"/models/rf_dev.rds"))
-  
-  # stop parallelization
-  stopCluster(cl)
+  saveRDS(rf, paste0(homeDir,"models/rf_dev.rds"))
   
 }
 
@@ -247,9 +238,6 @@ if (file.exists(model)) {
   svm = readRDS(model)
   
 } else {
-  # turn on parallelization
-  cl <- makePSOCKcluster(5)
-  registerDoParallel(cl)
   
   # set seed
   set.seed(1995)
@@ -273,10 +261,7 @@ if (file.exists(model)) {
               trControl = ctrl,  
               preProcess = c("center","scale"))
   timestamp()
-  saveRDS(svm, paste0(homeDir,"/models/svm_dev.rds"))
-  
-  # stop parallelization
-  stopCluster(cl)
+  saveRDS(svm, paste0(homeDir,"models/svm_dev.rds"))
   
 }
 
@@ -288,9 +273,6 @@ if (file.exists(model)) {
   svm_diffs = readRDS(model)
   
 } else {
-  # turn on parallelization
-  cl <- makePSOCKcluster(5)
-  registerDoParallel(cl)
   
   # set seed
   set.seed(1995)
@@ -314,9 +296,9 @@ if (file.exists(model)) {
                     trControl = ctrl,  
                     preProcess = c("center","scale"))
   timestamp()
-  saveRDS(svm_diffs, paste0(homeDir,"/models/svm_diffs_dev.rds")
-          
-          # stop parallelization
-          stopCluster(cl)
+  saveRDS(svm_diffs, paste0(homeDir,"models/svm_diffs_dev.rds"))
           
 }
+
+# stop parallelization
+stopCluster(cl)

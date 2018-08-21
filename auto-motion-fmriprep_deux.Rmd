@@ -137,30 +137,30 @@ joined = left_join(dataset, coded, by = c("subjectID", "task", "run", "volume", 
 # visualize confounds
 ## distributions
 ```{r, fig.width = 10, fig.height = 15}
-# data.plot = joined %>%
-#   gather(feature, value, -c(subjectID, wave, task, run, volume, artifact, striping, intensity, sub.run, no.artifacts)) %>%
-#   filter(!grepl("Cosine|Steady", feature))
+data.plot = joined %>%
+  gather(feature, value, -c(subjectID, wave, task, run, volume, artifact, striping, intensity, sub.run, no.artifacts)) %>%
+  filter(!grepl("Cosine|Steady", feature))
 
-# ggplot(data.plot, aes(1, value)) +
-#   geom_boxplot() +
-#   geom_jitter(alpha = .02) + 
-#   facet_wrap(~feature, scales = "free", ncol = 5) + 
-#   theme_minimal()
+ggplot(data.plot, aes(1, value)) +
+  geom_boxplot() +
+  geom_jitter(alpha = .02) +
+  facet_wrap(~feature, scales = "free", ncol = 5) +
+  theme_minimal()
 
-# ggplot(data.plot, aes(value)) + 
-#   geom_density(fill = wesanderson::wes_palette("Zissou1", 1, "continuous")) +
-#   facet_wrap(~feature, scales = "free", ncol = 5) + 
-#   theme_minimal()
+ggplot(data.plot, aes(value)) +
+  geom_density(fill = wesanderson::wes_palette("Zissou1", 1, "continuous")) +
+  facet_wrap(~feature, scales = "free", ncol = 5) +
+  theme_minimal()
 ```
 
 ## scatter plots
-```{r, fig.width=30, fig.height=30, warning=FALSE, error=FALSE, message=FALSE}
-# p = joined %>%
-#   select(-c(subjectID, wave, task, run, volume, no.artifacts, sub.run, starts_with("NonSteady"), starts_with("Cosine"))) %>%
-#   mutate(artifact = as.factor(artifact)) %>%
-#   ggpairs(aes(colour = artifact, alpha = 0.01)) +
-#     theme_minimal()
-# ggsave(p, file = 'plots/correlations.png', height = 30, width = 30)
+```{r, fig.width=35, fig.height=35, warning=FALSE, error=FALSE, message=FALSE}
+p = joined %>%
+  select(-c(subjectID, wave, task, run, volume, no.artifacts, sub.run, starts_with("NonSteady"), starts_with("Cosine"))) %>%
+  mutate(artifact = as.factor(artifact)) %>%
+  ggpairs(aes(colour = artifact, alpha = 0.01)) +
+    theme_minimal()
+ggsave(p, file = 'plots/correlations.png', height = 35, width = 35)
 ```
 
 ## correlate confounds
@@ -175,7 +175,7 @@ dataset.corr = joined %>%
   melt(.)
 
 # plot the data
-ggplot(dataset.corr, aes(as.factor(Var2), as.factor(Var1), fill = value)) +
+p = ggplot(dataset.corr, aes(as.factor(Var2), as.factor(Var1), fill = value)) +
   geom_tile(color = "white") +
   scale_fill_gradient2(low = palette[1], high = palette[3], mid = "white", 
                        midpoint = 0, limit = c(-1,1), space = "Lab", 
@@ -185,6 +185,7 @@ ggplot(dataset.corr, aes(as.factor(Var2), as.factor(Var1), fill = value)) +
   theme_minimal() + 
   theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 10, hjust = 1)) + 
   geom_text(aes(label = round(value,1)), size = 2.5)
+ggsave(p, file = 'plots/corr_mat.png', height = 35, width = 35)
 ```
 
 ## subject level
@@ -497,9 +498,68 @@ results_df_roc %>%
               size = 1)
 ```
 
-## apply models to holdout sample
-```{r}
+#######
+RUN / LOAD DEV MODELS
+#######
 
+## apply dev models to holdout sample
+```{r}
+# define roc function
+test_roc = function(model, data) {
+  roc(data$artifact,
+      predict(model, data, type = "prob")[, "yes"])
+}
+
+# make model lists
+model_list = list(RF = rf,
+                  RF.diff = rf_diffs,
+                  SVM = svm,
+                  SVM.diff = svm_diffs)
+
+model_list_roc = model_list %>%
+  map(test_roc, data = holdout)
+
+# AUC
+model_list_roc %>%
+  map(auc)
+
+# confusion matrix
+confusionMatrix(holdout$artifact, predict(rf, holdout))
+confusionMatrix(holdout$artifact, predict(rf_diffs, holdout))
+confusionMatrix(holdout$artifact, predict(svm, holdout))
+confusionMatrix(holdout$artifact, predict(svm_diffs, holdout))
+
+# variable importance
+varImp(rf)
+varImp(rf_diffs)
+varImp(svm)
+varImp(svm_diffs)
+
+results_list_roc = list(NA)
+num_mod = 1
+
+for (the_roc in model_list_roc) {
+  
+  results_list_roc[[num_mod]] = 
+    data_frame(TPR = the_roc$sensitivities,
+               FPR = 1 - the_roc$specificities,
+               Model = names(model_list)[num_mod])
+  
+  num_mod = num_mod + 1
+  
+}
+
+results_df_roc = bind_rows(results_list_roc)
+
+results_df_roc %>% 
+  ggplot(aes(FPR, TPR, color = Model)) +
+  geom_line(size = 1, alpha = .75) +
+  scale_color_manual(values = wesanderson::wes_palette("Darjeeling1", 4, "continuous")) +
+  theme_minimal() + 
+  geom_abline(intercept = 0, 
+              slope = 1, 
+              color = "gray37", 
+              size = 1)
 ```
 
 # Plot RF predictions/errors
@@ -507,7 +567,7 @@ results_df_roc %>%
 # add predictions
 plot.train = joined %>%
   mutate(artifact = as.factor(ifelse(artifact == 1, "yes", "no")))
-plot.train$predicted = predict(rf_diffs, ml.data)
+plot.train$predicted = predict(rf, ml.data)
 
 # code predictions
 plot.train = plot.train %>%
@@ -545,7 +605,7 @@ nada = plot.train %>%
 # add predictions
 plot.compare = joined %>%
   mutate(artifact = as.factor(ifelse(artifact == 1, "yes", "no")))
-plot.compare$predicted.ML = predict(orig_rf_diffs, ml.data)
+plot.compare$predicted.ML = predict(rf, ml.data)
 
 # code predictions
 plot.compare1 = plot.compare %>%
@@ -562,9 +622,9 @@ plot.compare1 = plot.compare %>%
 mats = plot.compare1 %>%
   spread(method, class)
 
-confusionMatrix(mat$artifact, as.factor(mat$predicted.2mm))
-confusionMatrix(mat$artifact, as.factor(mat$predicted.fd))
-confusionMatrix(mat$artifact, as.factor(mat$predicted.ML))
+confusionMatrix(mats$artifact, as.factor(mats$predicted.2mm))
+confusionMatrix(mats$artifact, as.factor(mats$predicted.fd))
+confusionMatrix(mats$artifact, as.factor(mats$predicted.ML))
 ```
 
 ## plot
@@ -586,7 +646,7 @@ nada = plot.compare1 %>%
               legend.direction = "horizontal",
               legend.title = element_blank())
       print(plot)
-      ggsave(plot, file = paste0(plotDir,'predicted/',.$subjectID[[1]],"_",.$task[[1]],"_",.$run[[1]],'.png'), height = 4, width = 6)
+      ggsave(plot, file = paste0(plotDir,'comparison/',.$subjectID[[1]],"_",.$task[[1]],"_",.$run[[1]],'.png'), height = 4, width = 6)
       data.frame()
     })
 ```
@@ -623,7 +683,7 @@ rps = dataset %>%
 
 # recode NAs and apply model
 rps[is.na(rps)] = 0
-rps$ML = predict(orig_rf_diffs, rps)
+rps$ML = predict(rf, rps)
 
 # gather predictions and select columns
 rps_out = rps %>%
@@ -639,28 +699,28 @@ rps_out %>%
   summarize(n = n())
 
 # write files
-# if (writeRP) {
-#   if (!file.exists(rpDir)) {
-#     message(paste0(rpDir, ' does not exist. Creating it...'))
-#     dir.create(rpDir)
-#   }
-#   
-#   rp_files_written = rps_out %>% 
-#     arrange(subjectID, run, volume) %>% 
-#     group_by(subjectID, run, method) %>% 
-#     do({
-#       fname = paste(
-#         rpDir,
-#         'rp_',.$subjectID[[1]],'_SVC',.$run[[1]],'_',.$method[[1]],'.txt',
-#         sep = '')
-#       write.table(
-#         .[,-c(1:4)],
-#         fname,
-#         quote = F,
-#         sep = '   ',
-#         row.names = F,
-#         col.names = F)
-#       data.frame(rp_file_name = fname)
-#     })
-# }
+if (writeRP) {
+  if (!file.exists(rpDir)) {
+    message(paste0(rpDir, ' does not exist. Creating it...'))
+    dir.create(rpDir)
+  }
+
+  rp_files_written = rps_out %>%
+    arrange(subjectID, run, volume) %>%
+    group_by(subjectID, run, method) %>%
+    do({
+      fname = paste(
+        rpDir,
+        'rp_',.$subjectID[[1]],'_SVC',.$run[[1]],'_',.$method[[1]],'.txt',
+        sep = '')
+      write.table(
+        .[,-c(1:4)],
+        fname,
+        quote = F,
+        sep = '   ',
+        row.names = F,
+        col.names = F)
+      data.frame(rp_file_name = fname)
+    })
+}
 ```
