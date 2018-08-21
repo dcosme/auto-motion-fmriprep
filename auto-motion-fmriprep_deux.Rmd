@@ -160,7 +160,7 @@ p = joined %>%
   mutate(artifact = as.factor(artifact)) %>%
   ggpairs(aes(colour = artifact, alpha = 0.01)) +
     theme_minimal()
-ggsave(p, file = 'plots/correlations.png', height = 35, width = 35)
+ggsave(p, file = 'plots/correlations.png', height = 15, width = 15)
 ```
 
 ## correlate confounds
