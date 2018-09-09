@@ -1,0 +1,32 @@
+{
+    "description": "<p>Scripts for automated assessment of motion artifacts in fMRI data using fmriprep confounds.</p>", 
+    "license": "other-open", 
+    "title": "dcosme/auto-motion-fmriprep: Flux", 
+    "version": "v1.0", 
+    "upload_type": "software", 
+    "publication_date": "2018-09-09", 
+    "creators": [
+        {
+            "name": "Danielle Cosme"
+        }, 
+        {
+            "name": "John C. Flournoy"
+        }, 
+        {
+            "name": "Nandita Vijayakumar"
+        }
+    ], 
+    "access_right": "open", 
+    "related_identifiers": [
+        {
+            "scheme": "url", 
+            "identifier": "https://github.com/dcosme/auto-motion-fmriprep/tree/v1.0", 
+            "relation": "isSupplementTo"
+        }, 
+        {
+            "scheme": "doi", 
+            "identifier": "10.5281/zenodo.1412130", 
+            "relation": "isVersionOf"
+        }
+    ]
+}
