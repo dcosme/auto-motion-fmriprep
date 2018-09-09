@@ -22,10 +22,10 @@
 # * figDPI = plot resolution in dots per inch
 
 # paths
-confoundDir = '~/Documents/code/auto-motion-fmriprep/archive/data/TAG'
-summaryDir = '~/Documents/code/auto-motion-fmriprep/summary'
-plotDir = '~/Documents/code/auto-motion-fmriprep/plots'
-rpDir = '~/Documents/code/auto-motion-fmriprep/rp_txt'
+confoundDir = '/projects/dsnlab/shared/tag/bids_data/derivatives/fmriprep'
+summaryDir = '/projects/dsnlab/shared/tag/TAG_scripts/fMRI/fx/motion/auto-motion-fmriprep/summary'
+plotDir = '/projects/dsnlab/shared/tag/TAG_scripts/fMRI/fx/motion/auto-motion-fmriprep/plots'
+rpDir = '/projects/dsnlab/shared/tag/TAG_scripts/fMRI/fx/motion/auto-motion-fmriprep/rp_txt'
 
 # variables
 study = 'TAG'
