@@ -191,8 +191,8 @@ if (writePlot) {
   
   # save the plots
   plots_written = dataset %>% 
-    mutate(label = ifelse(grepl('yes', trash), as.character(volume), ''),
-           code = ifelse(trash == 'yes', 'trash', NA)) %>%
+    mutate(label = ifelse(grepl(1, trash), as.character(volume), ''),
+           code = ifelse(trash == 1, 'trash', NA)) %>%
     gather(indicator, value, figIndicators) %>%
     group_by(subjectID, wave, task, run) %>%
     do({
