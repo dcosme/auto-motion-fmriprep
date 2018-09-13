@@ -28,9 +28,11 @@ plotDir = '/projects/dsnlab/shared/tag/TAG_scripts/fMRI/fx/motion/auto-motion-fm
 rpDir = '/projects/dsnlab/shared/tag/TAG_scripts/fMRI/fx/motion/auto-motion-fmriprep/rp_txt'
 
 # variables
+# please note the expected BIDS file pattern is e.g. sub-[TAG001]_ses-[wave1]_task-[DSD]_run-[01]_bold_confounds.tsv
+# if you do not include the 'run' argument, you may need to modify the filePattern definition in lines 38 and 56 of auto_motion_fmriprep.R
 study = 'TAG'
 subPattern = 'sub-(.*[0-9]{3})'
-wavePattern = 'ses-wave([0-9]{1})'
+wavePattern = 'ses-(wave[0-9]{1})'
 taskPattern = 'task-(SVC|DSD)'
 runPattern = 'run-([0-9]{2})'
 writeRP = TRUE

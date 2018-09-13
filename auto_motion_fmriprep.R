@@ -39,7 +39,7 @@ for (file in fileList) {
     dataset = read_tsv(file.path(confoundDir, file)) %>% 
       mutate(file = file) %>%
       extract(file, c('subjectID', 'wave', 'task', 'run'),
-              file.path('sub-.*','ses-wave.*', 'func', filePattern)) %>%
+              file.path('sub-.*','ses-.*', 'func', filePattern)) %>%
       mutate(wave = as.integer(wave),
              run = as.integer(run),
              stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", 0, stdDVARS)),
@@ -57,7 +57,7 @@ for (file in fileList) {
     tmp = read_tsv(file.path(confoundDir, file)) %>% 
       mutate(file = file) %>%
       extract(file, c('subjectID', 'wave', 'task', 'run'),
-              file.path('sub-.*','ses-wave.*', 'func', filePattern)) %>%
+              file.path('sub-.*','ses-.*', 'func', filePattern)) %>%
       mutate(wave = as.integer(wave),
              run = as.integer(run),
              stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", 0, stdDVARS)),
@@ -207,7 +207,6 @@ if (writePlot) {
           x = "\nvolume") +
         theme_minimal(base_size = 10) +
         theme(legend.position = "none")
-      print(plot)
       ggsave(plot, file = file.path(plotDir, paste0(.$subjectID[[1]], '_', .$wave[[1]], '_', .$task[[1]], '_', .$run[[1]], figFormat)), height = figHeight, width = figWidth, dpi = figDPI)
       data.frame()
     })
