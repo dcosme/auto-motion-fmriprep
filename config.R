@@ -32,7 +32,7 @@ rpDir = '/projects/dsnlab/shared/tag/TAG_scripts/fMRI/fx/motion/auto-motion-fmri
 # if you do not include the 'run' argument, you may need to modify the filePattern definition in lines 38 and 56 of auto_motion_fmriprep.R
 study = 'TAG'
 subPattern = 'sub-(.*[0-9]{3})'
-wavePattern = 'ses-(wave[0-9]{1})'
+wavePattern = 'ses-wave([0-9]{1})' # just extract the number
 taskPattern = 'task-(SVC|DSD)'
 runPattern = 'run-([0-9]{2})'
 writeRP = TRUE
