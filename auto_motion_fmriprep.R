@@ -29,7 +29,7 @@ source('config.R')
 #------------------------------------------------------
 # load confound files
 #------------------------------------------------------
-fileList = list.files(confoundDir, pattern = 'confounds.tsv', recursive = TRUE)
+fileList = list.files(confoundDir, pattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_"), recursive = TRUE)
 
 for (file in fileList) {
   
