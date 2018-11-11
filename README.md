@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1412131.svg)](https://doi.org/10.5281/zenodo.1412131)
+
 # auto-motion-fmriprep
 Scripts for the automated assessment of motion artifacts in fMRI data using fmriprep confounds.
 
