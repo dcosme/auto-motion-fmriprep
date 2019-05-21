@@ -31,41 +31,23 @@ source('config.R')
 #------------------------------------------------------
 fileList = list.files(confoundDir, pattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_"), recursive = TRUE)
 
+dataset = data.frame()
+
 for (file in fileList) {
-  
-  # if the merged dataset doesn't exist, create it
-  if (!exists('dataset')) {
-    filePattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_")
-    dataset = read_tsv(file.path(confoundDir, file)) %>% 
-      mutate(file = file) %>%
-      extract(file, c('subjectID', 'wave', 'task', 'run'),
-              file.path('sub-.*','ses-.*', 'func', filePattern)) %>%
-      mutate(wave = as.integer(wave),
-             run = as.integer(run),
-             stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", 0, stdDVARS)),
-             `non-stdDVARS` = as.numeric(ifelse(`non-stdDVARS` %in% "n/a", 0, `non-stdDVARS`)),
-             `vx-wisestdDVARS` = as.numeric(ifelse(`vx-wisestdDVARS` %in% "n/a", 0, `vx-wisestdDVARS`)),
-             FramewiseDisplacement = as.numeric(ifelse(FramewiseDisplacement %in% "n/a", 0, FramewiseDisplacement)),
-             volume = row_number()) %>%
-      select(subjectID, wave, task, run, volume, everything())
-    colnames(dataset) = gsub('-', '.', colnames(dataset))
-  }
-  
-  # if the merged dataset does exist, append to it
-  else {
-    filePattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_")
-    tmp = read_tsv(file.path(confoundDir, file)) %>% 
-      mutate(file = file) %>%
-      extract(file, c('subjectID', 'wave', 'task', 'run'),
-              file.path('sub-.*','ses-.*', 'func', filePattern)) %>%
-      mutate(wave = as.integer(wave),
-             run = as.integer(run),
-             stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", 0, stdDVARS)),
-             `non-stdDVARS` = as.numeric(ifelse(`non-stdDVARS` %in% "n/a", 0, `non-stdDVARS`)),
-             `vx-wisestdDVARS` = as.numeric(ifelse(`vx-wisestdDVARS` %in% "n/a", 0, `vx-wisestdDVARS`)),
-             FramewiseDisplacement = as.numeric(ifelse(FramewiseDisplacement %in% "n/a", 0, FramewiseDisplacement)),
-             volume = row_number()) %>%
-      select(subjectID, wave, task, run, volume, everything())
+  filePattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_")
+  tmp = tryCatch(read_tsv(file.path(confoundDir, file)) %>% 
+    mutate(file = file) %>%
+    extract(file, c('subjectID', 'wave', 'task', 'run'),
+            file.path('sub-.*','ses-.*', 'func', filePattern)) %>%
+    mutate(wave = as.integer(wave),
+           run = as.integer(run),
+           stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", 0, stdDVARS)),
+           `non-stdDVARS` = as.numeric(ifelse(`non-stdDVARS` %in% "n/a", 0, `non-stdDVARS`)),
+           `vx-wisestdDVARS` = as.numeric(ifelse(`vx-wisestdDVARS` %in% "n/a", 0, `vx-wisestdDVARS`)),
+           FramewiseDisplacement = as.numeric(ifelse(FramewiseDisplacement %in% "n/a", 0, FramewiseDisplacement)),
+           volume = row_number()) %>%
+    select(subjectID, wave, task, run, volume, everything()), error = function(e) message(file))
+  if (length(tmp) > 0) {
     colnames(tmp) = gsub('-', '.', colnames(tmp))
     dataset = bind_rows(dataset, tmp)
     rm(tmp)
