@@ -11,7 +11,7 @@ Scripts for the automated assessment of motion artifacts in fMRI data using fmri
 ## About
 These scripts use machine learning and the motion indicators from [fmriprep](https://github.com/poldracklab/fmriprep) to detect motion artifacts in fMRI data and returns a "trash" regressor (i.e. a series of 1s and 0s denoting the presence or absence of motion artifacts) that can be used in first level models along with other nuisance regressors. 
 
-The machine learning classifier was developed to accurately classify visual motion artifacts (i.e. striping) using data from the [Developmental Social Neuroscience Lab](https://github.com/dsnlab) at the University of Oregon. This classifier can be applied to new data to predict motion artifacts using these scripts. For more information about the development and validation of the classifier, please check out my poster from [FLUX 2018](https://dcosme.github.io/cosme_flux_2018.pdf).
+The machine learning classifier was developed to accurately classify visual motion artifacts (i.e. striping) using data from the [Developmental Social Neuroscience Lab](https://github.com/dsnlab) at the University of Oregon. This classifier can be applied to new data to predict motion artifacts using these scripts. For more information about the development and validation of the classifier, please check out my poster from [FLUX 2018](https://dcosme.github.io/posters/Cosme_FLUX_2018.pdf).
 
 ## Requirements
 * fMRI data must be preprocessed using `fmriprep` and each sequence you want to model must have a `confounds.tsv` file
