@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 
 from sklearn.ensemble import RandomForestClassifier
+from scipy.spatial.distance import euclidean
+from numpy import pi
 from glob import glob
 import argparse
 import os
@@ -247,13 +249,34 @@ def pngmaker():
     pass
 
 
-def txtmaker():
+def txtmaker(confound_file, radius_mm=50.0, norp=False, noeuc=False):
     # #------------------------------------------------------
     # # write rps
     # #------------------------------------------------------
     # # select relevant data
     # rps = dataset %>%
     # select(subjectID, wave, task, run, volume, X, Y, Z, RotX, RotY, RotZ, trash)
+
+    output_path = os.path.dirname(confound_file).replace('derivatives/fmriprep', 'derivatives/auto-motion-fmriprep')
+    output_name = os.path.basename(confound_file).replace('_bold_confounds.tsv','_bold_confounds_amf.tsv')
+
+    # path_split = output_path.split(os.sep)
+    # subject = path_split[-2].split('-')[-1]
+    # session = path_split[-1].split('-')[-1]
+
+    df = pandas.read_csv(confound_file)
+
+    if not norp:
+        if not noeuc:
+            df.RotX_mm = radius_mm*df.RotX*180.0/pi
+            df.RotY_mm = radius_mm*df.RotY*180.0/pi
+            df.RotZ_mm = radius_mm*df.RotZ*180.0/pi
+            df.trans_mm = l2norm3ddf(X, Y, Z)
+            df.rot_mm = l2norm3ddf(RotX, RotY, RotZ)
+            df.deriv_trans = diff(trans)
+            df.deriv_rot = diff(rot)
+
+    df.to_csv(os.path.join(output_path, output_name), sep='t',escapechar='\')
 
     # # write files
     # if (noRP == FALSE) {
@@ -354,8 +377,15 @@ def main(argv=sys.argv):
     args = cli()
 
     # for all subjects
-    subject_dirs = glob(os.path.join(args.bids_dir, "sub-*"))
-    subjects = [subject_dir.split("-")[-1] for subject_dir in subject_dirs]
+    confounds = glob(
+                    os.path.join(args.bids_dir, 
+                    'derivatives', 
+                    'fmriprep', 
+                    'sub-*', 
+                    'ses-*', 
+                    'func', 
+                    'sub-*_ses-*_task-*_bold_confounds.tsv')
+                    )
 
     # running training level
     if args.level == 'train':
@@ -363,8 +393,8 @@ def main(argv=sys.argv):
 
     # running group level
     elif args.level == 'test':
-        for subject in subjects:
-            txtmaker()
+        for confound in confounds:
+            txtmaker(confound)
             pngmaker()
 
             test()
