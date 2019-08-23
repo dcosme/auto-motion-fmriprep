@@ -73,20 +73,9 @@ def cli():
     #                     dest='out_dir'
     #                     )
     parser.add_argument('-l', '--level', action='store', required=True, type=str,
-                        help='Level of the analysis that will be performed. \
-                            Multiple participant level analyses can be run independently \
-                            (in parallel) using the same output_dir.',
-                        choices=['train', 'participant', 'group'],
+                        help='Level of the classification that will be performed.',
+                        choices=['train', 'test'],
                         dest='level'
-                        )
-    parser.add_argument('-p', '--participant', nargs='+', action='store', required=False, default=None,
-                        help='The label(s) of the participant(s) \
-                            that should be analyzed. The label \
-                            corresponds to sub-<participant_label> from the BIDS spec \
-                            (so it does not include "sub-"). If this parameter is not \
-                            provided all subjects should be analyzed. Multiple \
-                            participants can be specified with a space separated list.',
-                        dest='participant'
                         )
     parser.add_argument('-ne', '--no-euc', action='store_true', required=False, default=False,
                         help=('Do NOT use euclidean distance. Uses RAW realignment \
@@ -364,28 +353,22 @@ def summarize(df):
 def main(argv=sys.argv):
     args = cli()
 
-    if args.participant != None:
-        subjects = args.participant
-
     # for all subjects
-    else:
-        subject_dirs = glob(os.path.join(args.bids_dir, "sub-*"))
-        subjects = [subject_dir.split("-")[-1] for subject_dir in subject_dirs]
+    subject_dirs = glob(os.path.join(args.bids_dir, "sub-*"))
+    subjects = [subject_dir.split("-")[-1] for subject_dir in subject_dirs]
 
     # running training level
     if args.level == 'train':
         train()
 
-    # running participant level
-    if args.level == 'participant':
+    # running group level
+    elif args.level == 'test':
         for subject in subjects:
             txtmaker()
             pngmaker()
 
             test()
 
-    # running group level
-    elif args.level == 'group':
         summarize(args.bids_dir)
 
 if __name__ == "__main__":
