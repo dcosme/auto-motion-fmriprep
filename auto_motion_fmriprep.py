@@ -11,8 +11,55 @@ import pandas
 here = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
 
 
-def train():
-    pass
+def train(df):
+    """
+    Uses dataframe passed in from **??** and trains the 
+    SVM classifier to create your model. Returns **??**
+    Args:
+        df (pandas dataframe): Pandas dataframe of the 
+        counfound tsv data. 
+
+    Returns:
+        **???**
+    """
+    ## Currently hardcoded to use the CSV, but this should
+    ## be moved later. ** CLEEEEAN MEEEEE!!!! **
+
+    ## import csv ##
+    import pandas as pd 
+    import numpy as np
+    devsamp_csv = '/Users/d/Dropbox/1_GITHUB_REPOS/auto-motion-fmriprep/development_sample.csv'
+    df = pd.read_csv(devsamp_csv) 
+    df.shape
+    df.head
+
+    # get/convert training data #
+    data = df.drop(['artifact'], axis=1)
+    X = data.to_numpy().copy()
+    X.shape
+
+    # get/convert labels #
+    labels = df['artifact'].copy()
+    y = labels.to_numpy().copy()
+    y.shape
+
+    # Scale data #
+    from sklearn.preprocessing import scale
+    X = scale(X)
+
+    from sklearn.svm import SVC  # "Support Vector Classifier"
+    # from sklearn.model_selection import cross_validate
+    from sklearn.model_selection import cross_val_score
+    # from sklearn.model_selection import cross_val_predict
+    from sklearn.model_selection import RepeatedKFold
+    clf = SVC(kernel='linear')
+    rkf = RepeatedKFold(n_repeats=5, n_splits=10)
+    scores = cross_val_score(clf, X[:6000], y[:6000], cv=rkf)
+
+
+    print(scores)
+    return scores
+
 
 
 def test():
