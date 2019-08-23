@@ -1,6 +1,6 @@
 # This script loads the fmriprep confound files, applies a machine learning classifier to 
 # predict motion artifacts, and returns summaries by task, task and run, and trash volumes only. 
-# It will also export new rp_txt files if writeRP = TRUE and plots if writePlots = TRUE.
+# It will also export new rp_txt files if noRP = TRUE and plots if noPlots = TRUE.
 
 # Inputs:
 # * config.R = configuration file with user defined variables and paths
@@ -9,8 +9,8 @@
 # * study_summaryRun.csv = CSV file with summary by task and run
 # * study_summaryTask.csv = CSV file with summary by task only
 # * study_trashVols.csv = CSV file with trash volumes only
-# * if writeRP = TRUE, rp_txt files will be written to rpDir
-# * if writePlots = TRUE, plots for each subjects will be written to plotDir
+# * if noRP = TRUE, rp_txt files will be written to rpDir
+# * if noPlots = TRUE, plots for each subjects will be written to plotDir
 
 #------------------------------------------------------
 # load/install packages
@@ -22,24 +22,57 @@ if (!require(tidyverse)) {
 }
 
 #------------------------------------------------------
-# source the config file
+# define input arguments
 #------------------------------------------------------
-source('config.R')
+args = commandArgs(TRUE)
+confoundDir = args[1]
+summaryDir = args[2]
+rpDir = args[3]
+plotDir = args[4]
+study = args[5]
+noEuclidean = args[6]
+noRP = args[7]
+noPlot = args[8]
+figFormat = args[9]
+figHeight = as.numeric(args[10])
+figWidth = as.numeric(args[11])
+figDPI = as.numeric(args[12])
+csf = ifelse(args[13] == TRUE, "CSF", NA)
+wm = ifelse(args[14] == TRUE, "WhiteMatter", NA)
+gs = ifelse(args[15] == TRUE, "GlobalSignal", NA)
+dvars = ifelse(args[16] == TRUE, "stdDVARS", NA)
+sdvars = ifelse(args[17] == TRUE, "non.stdDVARS", NA)
+vsdvars = ifelse(args[18] == TRUE, "vx.wisestdDVARS", NA)
+fd = ifelse(args[19] == TRUE, "FramewiseDisplacement", NA)
+xtrans = ifelse(args[20] == TRUE, "X", NA)
+ytrans = ifelse(args[21] == TRUE, "Y", NA)
+ztrans = ifelse(args[22] == TRUE, "Z", NA)
+xrot = ifelse(args[23] == TRUE, "RotX", NA)
+yrot = ifelse(args[24] == TRUE, "RotY", NA)
+zrot = ifelse(args[25] == TRUE, "RotZ", NA)
+
+# define figure indicators
+indicators = c(csf, wm, gs, dvars, sdvars, vsdvars, fd, xtrans, ytrans, ztrans, xrot, yrot, zrot)
+figIndicators = indicators[!is.na(indicators)]
 
 #------------------------------------------------------
 # load confound files
 #------------------------------------------------------
-fileList = list.files(confoundDir, pattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_"), recursive = TRUE)
+message('--------Loading confound files--------')
+
+fileList = list.files(confoundDir, pattern = 'bold_confounds.tsv', recursive = TRUE)
 
 dataset = data.frame()
 
 for (file in fileList) {
-  filePattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_")
+  #filePattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_")
   tmp = tryCatch(read_tsv(file.path(confoundDir, file)) %>% 
     mutate(file = file) %>%
     extract(file, c('subjectID', 'wave', 'task', 'run'),
-            file.path('sub-.*','ses-.*', 'func', filePattern)) %>%
-    mutate(wave = as.integer(wave),
+            file.path('sub-.*','ses-.*', 'func', 'sub-(.*)_ses-(.*)_task-(.*)_(.*)_bold_confounds.tsv')) %>%
+    mutate(wave = str_extract(wave, "[[:digit:]]+"),
+           run = str_extract(wave, "[[:digit:]]+"),
+           wave = as.integer(wave),
            run = as.integer(run),
            stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", 0, stdDVARS)),
            `non-stdDVARS` = as.numeric(ifelse(`non-stdDVARS` %in% "n/a", 0, `non-stdDVARS`)),
@@ -57,6 +90,8 @@ for (file in fileList) {
 #------------------------------------------------------
 # apply classifier
 #------------------------------------------------------
+message('--------Applying classifier--------')
+
 # load classifier
 mlModel = readRDS('motion_classifier.rds')
 
@@ -71,6 +106,8 @@ dataset = dataset %>%
 #------------------------------------------------------
 # summarize data and write csv files
 #------------------------------------------------------
+message(sprintf('--------Writing summaries to %s--------', summaryDir))
+
 # summarize by task and run
 summaryRun = dataset %>% 
   group_by(subjectID, wave, task, run) %>% 
@@ -91,7 +128,7 @@ summaryTrash = dataset %>%
 # create the summary directory if it does not exist
 if (!file.exists(summaryDir)) {
   message(paste0(summaryDir, ' does not exist. Creating it now.'))
-  dir.create(summaryDir)
+  dir.create(summaryDir, recursive = TRUE)
 }
 
 # write files
@@ -107,8 +144,10 @@ rps = dataset %>%
   select(subjectID, wave, task, run, volume, X, Y, Z, RotX, RotY, RotZ, trash)
 
 # write files
-if (writeRP) {
-  if (writeEuclidean) {
+if (noRP == FALSE) {
+  message(sprintf('--------Writing text files to %s--------', rpDir))
+  if (noEuclidean == FALSE) {
+    message('Transforming realignment parameters to Euclidean distance')
     # ouput Euclidean distance and it's derivative rather than the original realignment parameters
     
     # define function to calculate Euclidean distance (i.e. the L2 norm)
@@ -139,7 +178,7 @@ if (writeRP) {
   # create the rp directory if it does not exist
   if (!file.exists(rpDir)) {
     message(paste0(rpDir, ' does not exist. Creating it now.'))
-    dir.create(rpDir)
+    dir.create(rpDir, recursive = TRUE)
   }
   
   # write the files
@@ -163,12 +202,12 @@ if (writeRP) {
 # write plots
 #------------------------------------------------------
 # plot indicators values as a function of time for the motion indicators specified in config.R
-if (writePlot) {
-  
+if (noPlot == FALSE) {
+  message(sprintf('--------Writing plots to %s--------', plotDir))
   # create the plot directory if it does not exist
   if (!file.exists(plotDir)) {
     message(paste0(plotDir, ' does not exist. Creating it now.'))
-    dir.create(plotDir)
+    dir.create(plotDir, recursive = TRUE)
   }
   
   # save the plots

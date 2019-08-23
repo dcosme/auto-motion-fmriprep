@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-""" Step one wraper for auto motion fmriprep project. 
+""" Step one wrapper for auto motion fmriprep project. 
     The initial script wraps user arguments and passes
     them to the current R script. This step can then be
     used to pass these arguments directly to a python
@@ -14,10 +14,6 @@ Args:
         supplied, will be made in "auto_motion_output"
         dir in main script directory. 
     study (string): study name
-    sub_reg (string): regular expression to extract subject ID
-    wavePattern (string): regular expression to extract wave number
-    taskPattern (string): regular expression to extract task name
-    runPattern (string): regular expression to extract run number
     norp (bool): SUPPRESS rp_txt files creation (default false)
     noplot (bool): SUPPRESS plot files creation (default false)
     noeuc (bool): SUPPRESS using Euclidean distance instead of the 
@@ -26,18 +22,6 @@ Args:
     f_format (str): file format for plot (default '.png')
     f_height (float): plot height in inches (default 5.5)
     f_width (float): plot width in inches (default 7)
-
-
-
-
-
-
-
-
-
-# * figHeight = plot height in inches
-# * figWidth = plot width in inches
-# * figDPI = plot resolution in dots per inch
 
 
 Returns: 
@@ -50,8 +34,16 @@ Returns:
 import argparse,os,subprocess,sys
 
 here = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
+
 ############
 prog_descrip = 'Auto-motion fmriprep wrapper.'
+
+def tf(tfvar):
+    if tfvar:
+        return 'TRUE'
+    else:
+        return 'FALSE'
+
 
 def main(argv=sys.argv):
     arg_parser = argparse.ArgumentParser(description=prog_descrip,
@@ -63,11 +55,6 @@ def main(argv=sys.argv):
     arg_parser.add_argument('-b', metavar='BIDS Dir', action='store', required=True, type=os.path.abspath,
                             help=('FULL path to your top level bids folder.'),
                             dest='bids_dir'
-                            )
-    arg_parser.add_argument('-fig_ind', metavar='Motion Indicators', action='store', type=list,
-                            required=False, default=['FramewiseDisplacement', 'GlobalSignal', 'stdDVARS'],
-                            help=('motion indicators to print in plot.'),
-                            dest='f_ind'
                             )
     arg_parser.add_argument('-fig_format', metavar='Fig File Format', action='store', type=str,
                             required=False, default='.png',
@@ -103,87 +90,139 @@ def main(argv=sys.argv):
                             help=('No plots created. This arg SUPPRESSES plot creation.'),
                             dest='noplot'
                             )
-    arg_parser.add_argument('-o', metavar='Ooutput Dir', action='store', required=False,
+    arg_parser.add_argument('-o', metavar='Output Dir', action='store', required=False,
                             type=os.path.abspath, 
                             default=os.path.join(here,'auto_motion_output'), 
                             help=('Output dir if not default.'),
                             dest='out_dir'
                             )
-    arg_parser.add_argument('-run', metavar='Run Reg', action='store', type=str, required=False,
-                            help=('regular expression to extract run number.'),
-                            dest='run_reg'
-                            )
     arg_parser.add_argument('-s', metavar='Study Name', action='store', type=str, required=True,
                             help=('Study name.'),
                             dest='study'
                             )
-    arg_parser.add_argument('-sub', metavar='Sub Reg', action='store', type=str, required=False,
-                            help=('regular expression to extract subject ID.'),
-                            dest='sub_reg'
+    arg_parser.add_argument('-fig_csf', action='store_true', 
+                            required=False, default=False,
+                            help=('Print CSF motion indicator in plot. If you select \
+                                more than three total, you may need to adjust the \
+                                figure dimensions'),
+                            dest='f_csf'
                             )
-    arg_parser.add_argument('-task', metavar='Task Reg', action='store', type=str, required=False,
-                            help=('regular expression to extract task name.'),
-                            dest='task_reg'
+    arg_parser.add_argument('-fig_wm', action='store_true', 
+                            required=False, default=False,
+                            help=('Print white matter motion indicator in plot. If you select \
+                                more than three total, you may need to adjust the \
+                                figure dimensions'),
+                            dest='f_wm'
                             )
-    arg_parser.add_argument('-wave', metavar='Wave Reg', action='store', type=str, required=False,
-                            help=('regular expression to extract wave number.'),
-                            dest='wave_reg'
+    arg_parser.add_argument('-fig_gs', action='store_true', 
+                            required=False, default=True,
+                            help=('Print global signal motion indicator in plot. If you select \
+                                more than three total, you may need to adjust the \
+                                figure dimensions'),
+                            dest='f_gs'
+                            )
+    arg_parser.add_argument('-fig_dvars', action='store_true', 
+                            required=False, default=False,
+                            help=('Print non-standardized DVARS motion indicator in plot. If you select \
+                                more than three total, you may need to adjust the \
+                                figure dimensions'),
+                            dest='f_dvars'
+                            )
+    arg_parser.add_argument('-fig_sdvars', action='store_true', 
+                            required=False, default=True,
+                            help=('Print standardized DVARS motion indicator in plot. If you select \
+                                more than three total, you may need to adjust the \
+                                figure dimensions'),
+                            dest='f_sdvars'
+                            )
+    arg_parser.add_argument('-fig_vsdvars', action='store_true', 
+                        required=False, default=False,
+                        help=('Print voxel-wise standardized DVARS motion indicator in plot. If you select \
+                            more than three total, you may need to adjust the \
+                            figure dimensions'),
+                        dest='f_vsdvars'
+                        )
+    arg_parser.add_argument('-fig_fd', action='store_true', 
+                            required=False, default=True,
+                            help=('Print framewise displacement motion indicator in plot. If you select \
+                                more than three total, you may need to adjust the \
+                                figure dimensions'),
+                            dest='f_fd'
+                            )
+    arg_parser.add_argument('-fig_xtrans', action='store_true', 
+                            required=False, default=False,
+                            help=('Print x translation motion indicator in plot. If you select \
+                                more than three total, you may need to adjust the \
+                                figure dimensions'),
+                            dest='f_xtrans'
+                            )
+    arg_parser.add_argument('-fig_ytrans', action='store_true', 
+                            required=False, default=False,
+                            help=('Print y translation motion indicator in plot. If you select \
+                                more than three total, you may need to adjust the \
+                                figure dimensions'),
+                            dest='f_ytrans'
+                            )
+    arg_parser.add_argument('-fig_ztrans', action='store_true', 
+                            required=False, default=False,
+                            help=('Print z translation motion indicator in plot. If you select \
+                                more than three total, you may need to adjust the \
+                                figure dimensions'),
+                            dest='f_ztrans'
+                            )
+    arg_parser.add_argument('-fig_xrot', action='store_true', 
+                            required=False, default=False,
+                            help=('Print x rotation motion indicator in plot. If you select \
+                                more than three total, you may need to adjust the \
+                                figure dimensions'),
+                            dest='f_xrot'
+                            )
+    arg_parser.add_argument('-fig_yrot', action='store_true', 
+                            required=False, default=False,
+                            help=('Print y rotation motion indicator in plot. If you select \
+                                more than three total, you may need to adjust the \
+                                figure dimensions'),
+                            dest='f_yrot'
+                            )
+    arg_parser.add_argument('-fig_zrot', action='store_true', 
+                            required=False, default=False,
+                            help=('Print z rotation motion indicator in plot. If you select \
+                                more than three total, you may need to adjust the \
+                                figure dimensions'),
+                            dest='f_zrot'
                             )
     args = arg_parser.parse_args()
 
-    confoundDir = os.path.join(args.bids_dir,'derivatives','fmriprep')
-    summaryDir = os.path.join(args.out_dir,'summary')
-    plotDir = os.path.join(args.out_dir,'plots')
-    rpDir = os.path.join(args.out_dir,'rp_txt')
-
-    ## testing ##
-    args.sub_reg = 'sub-(.*[0-9]{3})'
-    args.wave_reg = 'ses-wave([0-9]{1})'
-    args.task_reg = 'task-(SVC|DSD)'
-    args.run_reg = 'run-([0-9]{2})'
-
-
-    if args.norp == True:
-        norp = 'TRUE'
-    else:
-        norp = 'FALSE'
-
-    if args.noplot == True:
-        noplot = 'TRUE'
-    else:
-        noplot = 'FALSE'
-
-    if args.noeuc == True:
-        noeuc = 'TRUE'
-    else:
-        noeuc = 'FALSE'
-
-    f_ind = ' '.join(args.f_ind)
-
     r_comm = ' '.join(['Rscript',
                        os.path.join(here,'auto_motion_fmriprep.R'),
-                       confoundDir,
-                       summaryDir,
-                       rpDir,
-                       plotDir,
+                       os.path.join(args.bids_dir,'derivatives','fmriprep'),
+                       os.path.join(args.out_dir,'summary'),
+                       os.path.join(args.out_dir,'rp_txt'),
+                       os.path.join(args.out_dir,'plots'),
                        args.study,
-                       args.sub_reg,
-                       args.wave_reg,
-                       args.task_reg,
-                       args.run_reg,
-                       norp,
-                       noplot,
-                       noeuc,
-                       '(' + f_ind + ')',
+                       tf(args.norp),
+                       tf(args.noplot),
+                       tf(args.noeuc),
                        args.f_format,
                        args.f_height,
                        args.f_width,
-                       args.f_dpi
-                       ])
-    # print(r_comm)
+                       args.f_dpi,
+                       tf(args.f_csf),
+                       tf(args.f_wm),
+                       tf(args.f_gs),
+                       tf(args.f_dvars),
+                       tf(args.f_fd),
+                       tf(args.f_sdvars),
+                       tf(args.f_vsdvars),
+                       tf(args.f_xtrans),
+                       tf(args.f_ytrans),
+                       tf(args.f_ztrans),
+                       tf(args.f_xrot),
+                       tf(args.f_yrot),
+                       tf(args.f_zrot)])
+
+    #print(r_comm)
     subprocess.call(r_comm, shell=True)
-
-
 
 
 if __name__ == '__main__':
