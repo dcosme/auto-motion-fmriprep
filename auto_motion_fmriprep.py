@@ -28,7 +28,7 @@ def train(df):
     ## import csv ##
     import pandas as pd 
     import numpy as np
-    devsamp_csv = '/Users/d/Dropbox/1_GITHUB_REPOS/auto-motion-fmriprep/development_sample.csv'
+    devsamp_csv = os.path.join(here,'development_sample.csv')
     df = pd.read_csv(devsamp_csv) 
     df.shape
     df.head
