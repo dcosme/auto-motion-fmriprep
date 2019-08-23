@@ -4,3 +4,5 @@
 .Ruserdata
 .DS_Store
 /archive
+robj_to_python.ipynb
+.ipynb_checkpoints/

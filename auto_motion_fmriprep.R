@@ -51,8 +51,6 @@ xrot = ifelse(args[23] == TRUE, "RotX", NA)
 yrot = ifelse(args[24] == TRUE, "RotY", NA)
 zrot = ifelse(args[25] == TRUE, "RotZ", NA)
 
-args
-
 # define figure indicators
 indicators = c(csf, wm, gs, dvars, sdvars, vsdvars, fd, xtrans, ytrans, ztrans, xrot, yrot, zrot)
 figIndicators = indicators[!is.na(indicators)]
