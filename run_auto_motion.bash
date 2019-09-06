@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=28
 #SBATCH --ntasks=1
 #SBATCH --mem-per-cpu=1000
-#SBATCH --partition=defq,short,fat,long,longfat
+#SBATCH --partition=short,fat,long,longfat
 
 module load R gcc
 

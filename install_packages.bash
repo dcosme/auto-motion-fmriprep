@@ -2,11 +2,10 @@
 #
 #SBATCH --job-name=install_packages
 #SBATCH --output=install_packages.log
-#
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks=1
 #SBATCH --mem-per-cpu=1000
-#SBATCH --partition=defq,fat,long,longfat
+#SBATCH --partition=short,fat,long,longfat
 
 module load R gcc
 
