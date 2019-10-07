@@ -24,9 +24,9 @@ Modify this script to specify user-defined variables and paths.
 ### 2. `auto_motion_fmriprep.R`
 This script loads the fmriprep confound files, applies the machine learning classifier to predict motion artifacts, and returns summaries by task, task and run, and trash volumes only. 
 
-If `writeRP = TRUE`, it will also export a text file with realignment parameters (or realignment parameters converted into Euclidean distance) and the trash regressor for each participant/wave/task/run. 
+If `noRP = FALSE`, it will also export a text file with realignment parameters (or realignment parameters converted into Euclidean distance) and the trash regressor for each participant/wave/task/run. 
 
-If `writePlot = TRUE`, it will export timecourse plots with volumes predicted to have motion artifacts highlighted on confounds of your choice. Here is an example plot using framewise displacement, global signal, and standardized DVARS:
+If `noPlot = FALSE`, it will export timecourse plots with volumes predicted to have motion artifacts highlighted on confounds of your choice. Here is an example plot using framewise displacement, global signal, and standardized DVARS:
 
 ![example plot](example_plot.png)
 

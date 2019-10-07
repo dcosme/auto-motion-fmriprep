@@ -29,24 +29,27 @@ source('config.R')
 #------------------------------------------------------
 # load confound files
 #------------------------------------------------------
-fileList = list.files(confoundDir, pattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_"), recursive = TRUE)
+message('--------Loading confound files--------')
+
+fileList = list.files(confoundDir, pattern = 'bold_confounds.tsv', recursive = TRUE)
 
 dataset = data.frame()
 
 for (file in fileList) {
-  filePattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_")
   tmp = tryCatch(read_tsv(file.path(confoundDir, file)) %>% 
-    mutate(file = file) %>%
-    extract(file, c('subjectID', 'wave', 'task', 'run'),
-            file.path('sub-.*','ses-.*', 'func', filePattern)) %>%
-    mutate(wave = as.integer(wave),
-           run = as.integer(run),
-           stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", 0, stdDVARS)),
-           `non-stdDVARS` = as.numeric(ifelse(`non-stdDVARS` %in% "n/a", 0, `non-stdDVARS`)),
-           `vx-wisestdDVARS` = as.numeric(ifelse(`vx-wisestdDVARS` %in% "n/a", 0, `vx-wisestdDVARS`)),
-           FramewiseDisplacement = as.numeric(ifelse(FramewiseDisplacement %in% "n/a", 0, FramewiseDisplacement)),
-           volume = row_number()) %>%
-    select(subjectID, wave, task, run, volume, everything()), error = function(e) message(file))
+                   mutate(file = file) %>%
+                   extract(file, c('subjectID', 'wave', 'task', 'run'),
+                           file.path('sub-.*','ses-.*', 'func', 'sub-(.*)_ses-(.*)_task-(.*)_(.*)_bold_confounds.tsv')) %>%
+                   mutate(wave = str_extract(wave, "[[:digit:]]+"),
+                          run = str_extract(wave, "[[:digit:]]+"),
+                          wave = as.integer(wave),
+                          run = as.integer(run),
+                          stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", 0, stdDVARS)),
+                          `non-stdDVARS` = as.numeric(ifelse(`non-stdDVARS` %in% "n/a", 0, `non-stdDVARS`)),
+                          `vx-wisestdDVARS` = as.numeric(ifelse(`vx-wisestdDVARS` %in% "n/a", 0, `vx-wisestdDVARS`)),
+                          FramewiseDisplacement = as.numeric(ifelse(FramewiseDisplacement %in% "n/a", 0, FramewiseDisplacement)),
+                          volume = row_number()) %>%
+                   select(subjectID, wave, task, run, volume, everything()), error = function(e) message(file))
   if (length(tmp) > 0) {
     colnames(tmp) = gsub('-', '.', colnames(tmp))
     dataset = bind_rows(dataset, tmp)
@@ -57,6 +60,8 @@ for (file in fileList) {
 #------------------------------------------------------
 # apply classifier
 #------------------------------------------------------
+message('--------Applying classifier--------')
+
 # load classifier
 mlModel = readRDS('motion_classifier.rds')
 
@@ -71,6 +76,8 @@ dataset = dataset %>%
 #------------------------------------------------------
 # summarize data and write csv files
 #------------------------------------------------------
+message(sprintf('--------Writing summaries to %s--------', summaryDir))
+
 # summarize by task and run
 summaryRun = dataset %>% 
   group_by(subjectID, wave, task, run) %>% 
@@ -91,7 +98,7 @@ summaryTrash = dataset %>%
 # create the summary directory if it does not exist
 if (!file.exists(summaryDir)) {
   message(paste0(summaryDir, ' does not exist. Creating it now.'))
-  dir.create(summaryDir)
+  dir.create(summaryDir, recursive = TRUE)
 }
 
 # write files
@@ -107,8 +114,10 @@ rps = dataset %>%
   select(subjectID, wave, task, run, volume, X, Y, Z, RotX, RotY, RotZ, trash)
 
 # write files
-if (writeRP) {
-  if (writeEuclidean) {
+if (noRP == FALSE) {
+  message(sprintf('--------Writing text files to %s--------', rpDir))
+  if (noEuclidean == FALSE) {
+    message('Transforming realignment parameters to Euclidean distance')
     # ouput Euclidean distance and it's derivative rather than the original realignment parameters
     
     # define function to calculate Euclidean distance (i.e. the L2 norm)
@@ -139,7 +148,7 @@ if (writeRP) {
   # create the rp directory if it does not exist
   if (!file.exists(rpDir)) {
     message(paste0(rpDir, ' does not exist. Creating it now.'))
-    dir.create(rpDir)
+    dir.create(rpDir, recursive = TRUE)
   }
   
   # write the files
@@ -163,12 +172,12 @@ if (writeRP) {
 # write plots
 #------------------------------------------------------
 # plot indicators values as a function of time for the motion indicators specified in config.R
-if (writePlot) {
-  
+if (noPlot == FALSE) {
+  message(sprintf('--------Writing plots to %s--------', plotDir))
   # create the plot directory if it does not exist
   if (!file.exists(plotDir)) {
     message(paste0(plotDir, ' does not exist. Creating it now.'))
-    dir.create(plotDir)
+    dir.create(plotDir, recursive = TRUE)
   }
   
   # save the plots
@@ -185,8 +194,8 @@ if (writePlot) {
         facet_grid(indicator ~ ., scales = 'free') +
         scale_color_manual(values = "#E4B80E") +
         labs(title = paste0(.$subjectID[[1]], "  ", .$wave[[1]], "  ", .$task[[1]], "  ", .$run[[1]]),
-          y = "value\n",
-          x = "\nvolume") +
+             y = "value\n",
+             x = "\nvolume") +
         theme_minimal(base_size = 10) +
         theme(legend.position = "none")
       ggsave(plot, file = file.path(plotDir, paste0(.$subjectID[[1]], '_', .$wave[[1]], '_', .$task[[1]], '_', .$run[[1]], figFormat)), height = figHeight, width = figWidth, dpi = figDPI)
