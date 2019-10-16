@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 
-from sklearn.ensemble import RandomForestClassifier
-from glob import glob
 import argparse
 import os
 import subprocess
 import sys
-import pandas
 
 here = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
 
