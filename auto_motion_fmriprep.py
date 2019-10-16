@@ -18,31 +18,9 @@ def test():
 
 def cli():
     """
-    Step one wrapper for auto motion fmriprep project. 
-    The initial script wraps user arguments and passes
-    them to the current R script. This step can then be
-    used to pass these arguments directly to a python
-    function once it's written. 
-
-    Args:
-        bids_dir (abspath): Full path to bids dir. Builds 
-            to fmriprep dir.
-        out_dir (abspath): Optional output dir. Builds to
-            summary csv, rp_txt, and plot dirs. If not
-            supplied, will be made in "auto_motion_output"
-            dir in main script directory. 
-        study (string): study name
-        norp (bool): SUPPRESS rp_txt files creation (default false)
-        noplot (bool): SUPPRESS plot files creation (default false)
-        noeuc (bool): SUPPRESS using Euclidean distance instead of the 
-            raw realigment parameters (default false)
-        f_ind (list of strings): motion indicators to print in plot
-        f_format (str): file format for plot (default '.png')
-        f_height (float): plot height in inches (default 5.5)
-        f_width (float): plot width in inches (default 7)
+    Define and parse command line arguments
     """
 
-    ############
     prog_descrip = 'Auto-motion fmriprep'
 
     parser = argparse.ArgumentParser(description=prog_descrip,
@@ -50,19 +28,19 @@ def cli():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('-b', '--bids', metavar='BIDS Dir', action='store', required=True,
-                        help=('absolute path to your top level bids folder.'),
+                        help='absolute path to your top level bids folder.',
                         dest='bids_dir'
                         )
-    # parser.add_argument('-s', '--study', metavar='Study Name', action='store', type=str, required=True,
-    #                     help=('Study name.'),
-    #                     dest='study'
-    #                     )
-    # parser.add_argument('-o', '--output', metavar='Output Dir', action='store', required=False,
-    #                     type=os.path.abspath, 
-    #                     default=os.path.join(here,'auto_motion_output'), 
-    #                     help=('Output dir if not default.'),
-    #                     dest='out_dir'
-    #                     )
+    parser.add_argument('-s', '--study', metavar='Study Name', action='store', type=str, required=True,
+                        help='Study name.',
+                        dest='study'
+                        )
+    parser.add_argument('-o', '--output', metavar='Output Dir', action='store', required=False,
+                        type=os.path.abspath,
+                        default=os.path.join(here, 'auto_motion_output'),
+                        help='Output dir if not default.',
+                        dest='out_dir'
+                        )
     parser.add_argument('-l', '--level', action='store', required=True, type=str,
                         help='Level of the classification that will be performed.',
                         choices=['train', 'test'],
@@ -75,31 +53,31 @@ def cli():
                         dest='noeuc'
                         )
     parser.add_argument('-nr', '--no-rp', action='store_true', required=False, default=False,
-                        help=('No rp_txt files. This arg SUPPRESSES file write.'),
+                        help='No rp_txt files. This arg SUPPRESSES file write.',
                         dest='norp'
                         )
     parser.add_argument('-np', '--no-plot', action='store_true', required=False, default=False,
-                        help=('No plots created. This arg SUPPRESSES plot creation.'),
+                        help='No plots created. This arg SUPPRESSES plot creation.',
                         dest='noplot'
                         )
     parser.add_argument('-f', '--fig-format', metavar='Fig File Format', action='store', type=str,
                         required=False, default='.png',
-                        help=('file format for plot.'),
+                        help='file format for plot.',
                         dest='f_format'
                         )
     parser.add_argument('-h', '--fig-height', metavar='Fig Height', action='store', type=str,
                         required=False, default='5.5',
-                        help=('plot height in inches.'),
+                        help='plot height in inches.',
                         dest='f_height'
                         )
     parser.add_argument('-w', '--fig-width', metavar='Fig Width', action='store', type=str,
                         required=False, default='7.0',
-                        help=('plot width in inches.'),
+                        help='plot width in inches.',
                         dest='f_width'
                         )
     parser.add_argument('-dpi', '--fig-dpi', metavar='Fig DPI', action='store', type=str,
                         required=False, default='250',
-                        help=('plot resolution in dots per inch.'),
+                        help='plot resolution in dots per inch.',
                         dest='f_dpi'
                         )
     parser.add_argument('-c', '--fig-csf', action='store_true', 
@@ -343,14 +321,13 @@ def summarize(df):
 
 def main(argv=sys.argv):
     args = cli()
-    study = ''
 
     r_args = ['Rscript', 'auto_motion_fmriprep.R',
               os.path.join(args.bids_dir, 'derivatives', 'fmriprep'),
-              os.path.join(here, 'auto_motion_output', 'summary'),
-              os.path.join(here, 'auto_motion_output', 'rp_text'),
-              os.path.join(here, 'auto_motion_output', 'plots'),
-              study,
+              os.path.join(args.out_dir, 'summary'),
+              os.path.join(args.out_dir, 'rp_text'),
+              os.path.join(args.out_dir, 'plots'),
+              args.study,
               str(args.noeuc).upper(), str(args.norp).upper(), str(args.noplot).upper(),
               args.f_format, args.f_height, args.f_width, args.f_dpi,
               str(args.f_csf).upper(), str(args.f_wm).upper(), str(args.f_gs).upper(), str(args.f_dvars).upper(),
