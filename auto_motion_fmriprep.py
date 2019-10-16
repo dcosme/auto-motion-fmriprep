@@ -43,19 +43,13 @@ def cli():
         f_format (str): file format for plot (default '.png')
         f_height (float): plot height in inches (default 5.5)
         f_width (float): plot width in inches (default 7)
-
-
-    Returns: 
-        None: R script returns everything for now. Later 
-        version the python script will return all info, 
-        plots, etc. 
-
     """
 
     ############
     prog_descrip = 'Auto-motion fmriprep'
 
     parser = argparse.ArgumentParser(description=prog_descrip,
+                                     add_help=False,
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('-b', '--bids', metavar='BIDS Dir', action='store', required=True,
@@ -96,18 +90,18 @@ def cli():
                         help=('file format for plot.'),
                         dest='f_format'
                         )
-    parser.add_argument('-h', '--fig-height', metavar='Fig Height', action='store', type=float,
-                        required=False, default=5.5,
+    parser.add_argument('-h', '--fig-height', metavar='Fig Height', action='store', type=str,
+                        required=False, default='5.5',
                         help=('plot height in inches.'),
                         dest='f_height'
                         )
-    parser.add_argument('-w', '--fig-width', metavar='Fig Width', action='store', type=float,
-                        required=False, default=7.0,
+    parser.add_argument('-w', '--fig-width', metavar='Fig Width', action='store', type=str,
+                        required=False, default='7.0',
                         help=('plot width in inches.'),
                         dest='f_width'
                         )
-    parser.add_argument('-dpi', '--fig-dpi', metavar='Fig DPI', action='store', type=int,
-                        required=False, default=250,
+    parser.add_argument('-dpi', '--fig-dpi', metavar='Fig DPI', action='store', type=str,
+                        required=False, default='250',
                         help=('plot resolution in dots per inch.'),
                         dest='f_dpi'
                         )
@@ -118,7 +112,7 @@ def cli():
                             figure dimensions'),
                         dest='f_csf'
                         )
-    parser.add_argument('-w', '--fig-wm', action='store_true', 
+    parser.add_argument('-wm', '--fig-wm', action='store_true',
                         required=False, default=False,
                         help=('Print white matter motion indicator in plot. If you select \
                             more than three total, you may need to adjust the \
@@ -352,25 +346,24 @@ def summarize(df):
 
 def main(argv=sys.argv):
     args = cli()
+    study = ''
 
-    # for all subjects
-    subject_dirs = glob(os.path.join(args.bids_dir, "sub-*"))
-    subjects = [subject_dir.split("-")[-1] for subject_dir in subject_dirs]
+    r_args = ['Rscript', 'auto_motion_fmriprep.R',
+              os.path.join(args.bids_dir, 'derivatives', 'fmriprep'),
+              os.path.join(here, 'auto_motion_output', 'summary'),
+              os.path.join(here, 'auto_motion_output', 'rp_text'),
+              os.path.join(here, 'auto_motion_output', 'plots'),
+              study,
+              str(args.noeuc).upper(), str(args.norp).upper(), str(args.noplot).upper(),
+              args.f_format, args.f_height, args.f_width, args.f_dpi,
+              str(args.f_csf).upper(), str(args.f_wm).upper(), str(args.f_gs).upper(), str(args.f_dvars).upper(),
+              str(args.f_sdvars).upper(), str(args.f_vsdvars).upper(), str(args.f_fd).upper(),
+              str(args.f_xtrans).upper(), str(args.f_ytrans).upper(), str(args.f_ztrans).upper(),
+              str(args.f_xrot).upper(), str(args.f_yrot).upper(), str(args.f_zrot).upper()]
+    r_process = subprocess.run(r_args, capture_output=True)
+    print(r_process.stdout)
+    print(r_process.stderr)
 
-    # running training level
-    if args.level == 'train':
-        train()
-
-    # running group level
-    elif args.level == 'test':
-        for subject in subjects:
-            txtmaker()
-            pngmaker()
-
-            test()
-
-        summarize(args.bids_dir)
 
 if __name__ == "__main__":
     sys.exit(main())
-
