@@ -319,7 +319,7 @@ def summarize(df):
     pass
 
 
-def main(argv=sys.argv):
+def main():
     args = cli()
 
     r_args = ['Rscript', 'auto_motion_fmriprep.R',
