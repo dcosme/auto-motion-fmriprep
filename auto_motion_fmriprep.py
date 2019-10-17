@@ -35,12 +35,6 @@ def cli():
                         help='Study name.',
                         dest='study'
                         )
-    parser.add_argument('-o', '--output', metavar='Output Dir', action='store', required=False,
-                        type=os.path.abspath,
-                        default=os.path.join(here, 'auto_motion_output'),
-                        help='Output dir if not default.',
-                        dest='out_dir'
-                        )
     parser.add_argument('-l', '--level', action='store', required=True, type=str,
                         help='Level of the classification that will be performed.',
                         choices=['train', 'test'],
@@ -324,9 +318,9 @@ def main():
 
     r_args = ['Rscript', 'auto_motion_fmriprep.R',
               os.path.join(args.bids_dir, 'derivatives', 'fmriprep'),
-              os.path.join(args.out_dir, 'summary'),
-              os.path.join(args.out_dir, 'rp_text'),
-              os.path.join(args.out_dir, 'plots'),
+              os.path.join(args.bids_dir, 'derivatives', 'auto-motion', 'summary'),
+              os.path.join(args.bids_dir, 'derivatives', 'auto-motion', 'rp_text'),
+              os.path.join(args.bids_dir, 'derivatives', 'auto-motion', 'plots'),
               args.study,
               str(args.noeuc).upper(), str(args.norp).upper(), str(args.noplot).upper(),
               args.f_format, args.f_height, args.f_width, args.f_dpi,
