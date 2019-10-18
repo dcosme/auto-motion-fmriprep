@@ -20,6 +20,9 @@ osuRepo = 'http://ftp.osuosl.org/pub/cran/'
 if (!require(tidyverse)) {
   install.packages('tidyverse', repos = osuRepo)
 }
+if (!require(randomForest)) {
+  install.packages('randomForest', repos = osuRepo)
+}
 
 #------------------------------------------------------
 # define input arguments
