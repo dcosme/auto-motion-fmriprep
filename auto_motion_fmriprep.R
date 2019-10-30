@@ -41,7 +41,7 @@ for (file in fileList) {
                    extract(file, c('subjectID', 'wave', 'task', 'run'),
                            file.path('sub-.*','ses-.*', 'func', 'sub-(.*)_ses-(.*)_task-(.*)_(.*)_bold_confounds.tsv')) %>%
                    mutate(wave = str_extract(wave, "[[:digit:]]+"),
-                          run = str_extract(wave, "[[:digit:]]+"),
+                          run = str_extract(run, "[[:digit:]]+"),
                           wave = as.integer(wave),
                           run = as.integer(run),
                           stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", 0, stdDVARS)),
