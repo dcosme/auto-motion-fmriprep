@@ -67,7 +67,7 @@ class ConfoundsFileReader:
 
     def get_confounds(self) -> Tuple[str, int, str, int, numpy.ndarray]:
         for f in self._files:
-            subject_id, task, wave, run = '', '', 0, 0
+            subject_id, task, wave, run = '', '', '', ''
             match = re.search(self._pattern, str(f))
             if match:
                 subject_id, wave, task, run = match.groups()
@@ -77,4 +77,4 @@ class ConfoundsFileReader:
                                    filling_values=0,
                                    converters=self._converters)
             # select only the desired columns, because confounds_regressors.tsv file has hundreds of confounds
-            yield subject_id, wave, task, run, numpy.copy(tmp[self._names])
+            yield (subject_id, wave, task, run, numpy.copy(tmp[self._names]))
