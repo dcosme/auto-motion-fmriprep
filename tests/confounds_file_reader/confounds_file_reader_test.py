@@ -1,5 +1,4 @@
 from src.confounds_file_reader import ConfoundsFileReader
-from pathlib import Path
 import shutil
 
 
