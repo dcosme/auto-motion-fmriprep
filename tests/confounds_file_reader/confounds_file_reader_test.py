@@ -1,15 +1,14 @@
 from src.confounds_file_reader import ConfoundsFileReader
+from pathlib import Path
 import shutil
 
 
 class TestConfoundsFileReader:
-    def test_regex_train(self, tmp_path):
+    def test_regex_train(self, tmp_path, shared_datadir):
         # Create a training data file in test-controlled path
-        training_data_file = tmp_path.joinpath('development_sample.tsv')
-        with open(training_data_file, mode='w') as f:
-            pass
+        shutil.copyfile((shared_datadir / 'test_development.tsv'), tmp_path / 'development_sample.tsv')
 
-        c = ConfoundsFileReader(training_data_file, train=True)
+        c = ConfoundsFileReader(tmp_path, train=True)
 
         # Assert that training data should not have any subject ID, wave number, task name or run number
         for subject_id, wave, task, run, _ in c.get_confounds():
