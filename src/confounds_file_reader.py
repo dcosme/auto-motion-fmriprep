@@ -19,10 +19,9 @@ def yes_no_converter(s: bytes) -> int:
 class ConfoundsFileReader:
     """Reads confounds file for all subjects"""
 
-    def __init__(self, confounds_path: str, train: bool = False):
+    def __init__(self, confounds_path: str):
         """
         :param confounds_path: Path root containing data files
-        :param train: Is the data training data?
         """
         self._names = [
             'csf',
@@ -51,19 +50,19 @@ class ConfoundsFileReader:
             'rot_z']
 
         self._delimiter = '\t'
+
+        # Get training files, and add a converter for training / test data
+        self._training_files = Path(confounds_path).glob('**/development_sample.tsv')
+        self._converters = {'artifact': yes_no_converter}
+
+        # Get all the confounds_regressors.tsv files, which have format described here:
+        # https://fmriprep.readthedocs.io/en/stable/outputs.html#confounds
+        self._files = Path(confounds_path).glob('**/*confounds_regressors.tsv')
         # Extract the subject ID, wave number, task name, and run number from the file name
         self._pattern = 'sub-(.*)_ses-wave(\\d*)_task-(.*)_\\w*-(\\d*)_.*'
 
-        if train:
-            self._files = Path(confounds_path).glob('**/development_sample.tsv')
-            # Add a converter and column data name for training / test data
-            self._converters = {'artifact': yes_no_converter}
-            self._names = ['artifact'] + self._names
-        else:
-            # If not training data, read the confounds.tsv format described here:
-            # https://fmriprep.readthedocs.io/en/stable/outputs.html#confounds
-            self._files = Path(confounds_path).glob('**/*confounds_regressors.tsv')
-            self._converters = None
+    def get_size(self):
+        return len(self._names)
 
     def get_confounds(self) -> Tuple[str, int, str, int, numpy.ndarray]:
         for f in self._files:
@@ -74,7 +73,17 @@ class ConfoundsFileReader:
             tmp = numpy.genfromtxt(f, delimiter=self._delimiter,
                                    names=True,
                                    missing_values='n/a',
-                                   filling_values=0,
-                                   converters=self._converters)
+                                   filling_values=0)
             # select only the desired columns, because confounds_regressors.tsv file has hundreds of confounds
             yield (subject_id, wave, task, run, numpy.copy(tmp[self._names]))
+
+    def get_training_data(self) -> numpy.ndarray:
+        if self._training_files:
+            tmp = numpy.genfromtxt(next(self._training_files),
+                                   delimiter=self._delimiter,
+                                   names=True,
+                                   missing_values='n/a',
+                                   filling_values=0,
+                                   converters=self._converters)
+            names = ['artifact'] + self._names
+            return numpy.copy(tmp[names])

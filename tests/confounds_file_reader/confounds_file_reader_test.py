@@ -4,12 +4,13 @@ import shutil
 
 class TestConfoundsFileReader:
     def test_regex_train(self, tmp_path, shared_datadir):
-        # Create a training data file in test-controlled path
+        # Create a badly-named data file in test-controlled path
         shutil.copyfile((shared_datadir / 'test_development.tsv'), tmp_path / 'development_sample.tsv')
 
-        c = ConfoundsFileReader(tmp_path, train=True)
+        c = ConfoundsFileReader(tmp_path)
 
-        # Assert that training data should not have any subject ID, wave number, task name or run number
+        # Assert that get_confounds should not return any subject ID, wave number, task name or run number
+        # when the file name is not in the expected format.
         for subject_id, wave, task, run, _ in c.get_confounds():
             assert subject_id == ''
             assert task == ''
@@ -61,3 +62,16 @@ class TestConfoundsFileReader:
             count += 1
 
         assert count == num_files
+
+    def test_training_data(self, tmp_path, shared_datadir):
+        # Create a badly-named data file in test-controlled path
+        shutil.copyfile((shared_datadir / 'test_development.tsv'), tmp_path / 'development_sample.tsv')
+
+        c = ConfoundsFileReader(tmp_path)
+
+        data = c.get_training_data()
+
+        # There are two lines of input data.
+        # Length of data should be length of _names + 1, for the additional 'artifact' column in training data.
+        assert data.shape == (2,)
+        assert len(data[0]) == len(c._names) + 1
