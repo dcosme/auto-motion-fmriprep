@@ -67,7 +67,7 @@ class ConfoundsFileReader:
     def get_confounds(self) -> Tuple[str, int, str, int, numpy.ndarray]:
         for f in self._files:
             subject_id, task, wave, run = '', '', '', ''
-            match = re.search(self._pattern, str(f))
+            match = re.search(self._pattern, str(f.name))
             if match:
                 subject_id, wave, task, run = match.groups()
             tmp = numpy.genfromtxt(f, delimiter=self._delimiter,
