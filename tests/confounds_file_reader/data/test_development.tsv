@@ -1,2 +1,3 @@
 artifact	csf	white_matter	global_signal	std_dvars	dvars	framewise_displacement	t_comp_cor_00	t_comp_cor_01	t_comp_cor_02	t_comp_cor_03	t_comp_cor_04	t_comp_cor_05	a_comp_cor_00	a_comp_cor_01	a_comp_cor_02	a_comp_cor_03	a_comp_cor_04	a_comp_cor_05	trans_x	trans_y	trans_z	rot_x	rot_y	rot_z
-yes 0.0	n/a	n/a	0.0	0.0	n/a	0.0	n/a	0.0	n/a	0.0	n/a	n/a	n/a	n/a	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+yes 2.0	n/a	n/a	2.0	2.0	n/a	2.0	n/a	2.0	n/a	2.0	n/a	n/a	n/a	n/a	2.0	2.0	2.0	2.0	2.0	2.0	2.0	2.0	2.0	2.0
+yes 2.0	n/a	n/a	2.0	2.0	n/a	2.0	n/a	2.0	n/a	2.0	n/a	n/a	n/a	n/a	2.0	2.0	2.0	2.0	2.0	2.0	2.0	2.0	2.0	2.0
