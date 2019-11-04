@@ -21,10 +21,11 @@ class TestRealignment:
 
         rp.write(subject_id=subject_id, wave=wave, task=task, run=run, no_euclidean=False, data=data, artifact=artifact)
 
-        expected_file_name = f'rp_{subject_id}_{wave}_{task}_{run}.txt'
-        expected_path = tmp_path / expected_file_name
+        expected_file_name = f'sub-{subject_id}_ses-wave{wave}_task-{task}_acq-{run}-realignment_parameters.txt'
+        expected_path = tmp_path / f'sub-{subject_id}' / f'ses-wave{wave}' / 'func'
 
         assert expected_path.exists()
+        assert (expected_path / expected_file_name).exists()
 
     def test_invalid_columns(self, tmp_path):
         # Verify that invalid input data raises a ValueError
@@ -65,11 +66,11 @@ class TestRealignment:
 
         rp.write(subject_id=subject_id, wave=wave, task=task, run=run, no_euclidean=False, data=data, artifact=artifact)
 
-        expected_file_name = f'rp_{subject_id}_{wave}_{task}_{run}.txt'
-        expected_path = tmp_path / expected_file_name
+        expected_file_name = f'sub-{subject_id}_ses-wave{wave}_task-{task}_acq-{run}-realignment_parameters.txt'
+        expected_path = tmp_path / f'sub-{subject_id}' / f'ses-wave{wave}' / 'func'
 
         # Assert output has the correct number of columns
-        output = numpy.loadtxt(expected_path, delimiter='   ')
+        output = numpy.loadtxt(expected_path / expected_file_name, delimiter='   ')
 
         assert output.shape == (5,)
 
@@ -90,10 +91,10 @@ class TestRealignment:
 
         rp.write(subject_id=subject_id, wave=wave, task=task, run=run, no_euclidean=True, data=data, artifact=artifact)
 
-        expected_file_name = f'rp_{subject_id}_{wave}_{task}_{run}.txt'
-        expected_path = tmp_path / expected_file_name
+        expected_file_name = f'sub-{subject_id}_ses-wave{wave}_task-{task}_acq-{run}-realignment_parameters.txt'
+        expected_path = tmp_path / f'sub-{subject_id}' / f'ses-wave{wave}' / 'func'
 
         # Assert output has the correct number of columns
-        output = numpy.loadtxt(expected_path, delimiter='   ')
+        output = numpy.loadtxt(expected_path / expected_file_name, delimiter='   ')
 
         assert output.shape == (7,)

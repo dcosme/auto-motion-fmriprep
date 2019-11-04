@@ -14,6 +14,8 @@ class Realignment:
                               'rot_x',
                               'rot_y',
                               'rot_z']
+        # Create root output directory if missing
+        Path(self._output_dir).mkdir(parents=True, exist_ok=True)
 
     def write(self, subject_id: str, wave: str, task: str, run: str, no_euclidean: bool, data: numpy.ndarray,
               artifact: numpy.ndarray):
@@ -21,9 +23,10 @@ class Realignment:
             raise ValueError('data does not contain required columns')
 
         # Create output directory if missing
-        Path(self._output_dir).mkdir(parents=True, exist_ok=True)
+        path = Path(self._output_dir / f'sub-{subject_id}' / f'ses-wave{wave}' / 'func')
+        path.mkdir(parents=True, exist_ok=True)
 
-        file_name = f'rp_{subject_id}_{wave}_{task}_{run}.txt'
+        file_name = f'sub-{subject_id}_ses-wave{wave}_task-{task}_acq-{run}-realignment_parameters.txt'
 
         if not no_euclidean:
             translation_components = numpy.lib.recfunctions.structured_to_unstructured(data[self._column_names[0:3]])
@@ -40,5 +43,5 @@ class Realignment:
             data_to_write = numpy.lib.recfunctions.append_fields(data[self._column_names], 'artifact', artifact)
 
         fmt = ['%.7f'] * (len(data_to_write[0]) - 1) + ['%d']
-        numpy.savetxt(self._output_dir / file_name, data_to_write,
+        numpy.savetxt(path / file_name, data_to_write,
                       fmt=fmt, delimiter='   ')
