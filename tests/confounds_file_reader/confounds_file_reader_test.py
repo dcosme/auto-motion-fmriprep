@@ -11,11 +11,11 @@ class TestConfoundsFileReader:
 
         # Assert that get_confounds should not return any subject ID, wave number, task name or run number
         # when the file name is not in the expected format.
-        for subject_id, wave, task, run, _ in c.get_confounds():
-            assert subject_id == ''
-            assert task == ''
-            assert wave == ''
-            assert run == ''
+        for i, _ in c.get_confounds():
+            assert i.subject_id == ''
+            assert i.task == ''
+            assert i.wave == ''
+            assert i.run == ''
 
     def test_regex(self, tmp_path, shared_datadir):
         # Verify that the regex extracts subject ID, wave number, task name or run number from files named in the
@@ -32,11 +32,11 @@ class TestConfoundsFileReader:
         c = ConfoundsFileReader(tmp_path)
 
         # Assert that data has a subject ID, wave number, task name and run number
-        for a_subject_id, a_wave, a_task, a_run, _ in c.get_confounds():
-            assert a_subject_id == subject_id
-            assert a_task == task
-            assert a_wave == wave
-            assert a_run == run
+        for i, _ in c.get_confounds():
+            assert i.subject_id == subject_id
+            assert i.task == task
+            assert i.wave == wave
+            assert i.run == run
 
     def test_multiple_files(self, tmp_path, shared_datadir):
         # Create several files with data
@@ -56,7 +56,7 @@ class TestConfoundsFileReader:
 
         # Assert that several files were read, and that the data has the "right" shape
         count = 0
-        for a_subject_id, a_wave, a_task, a_run, data in c.get_confounds():
+        for _, data in c.get_confounds():
             assert data.shape == (2,)
             assert len(data[0]) == len(c._names)
             count += 1

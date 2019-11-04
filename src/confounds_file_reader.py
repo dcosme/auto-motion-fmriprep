@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Tuple
+from identifier import Identifier
 import numpy
 import re
 
@@ -64,18 +65,17 @@ class ConfoundsFileReader:
     def get_size(self):
         return len(self._names)
 
-    def get_confounds(self) -> Tuple[str, int, str, int, numpy.ndarray]:
+    def get_confounds(self) -> Tuple[Identifier, numpy.ndarray]:
         for f in self._files:
-            subject_id, task, wave, run = '', '', '', ''
             match = re.search(self._pattern, str(f.name))
             if match:
-                subject_id, wave, task, run = match.groups()
+                identifier = Identifier(*match.groups())
             tmp = numpy.genfromtxt(f, delimiter=self._delimiter,
                                    names=True,
                                    missing_values='n/a',
                                    filling_values=0)
             # select only the desired columns, because confounds_regressors.tsv file has hundreds of confounds
-            yield (subject_id, wave, task, run, numpy.copy(tmp[self._names]))
+            yield (identifier, numpy.copy(tmp[self._names]))
 
     def get_training_data(self) -> numpy.ndarray:
         if self._training_files:

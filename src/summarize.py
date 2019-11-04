@@ -3,6 +3,7 @@ import csv
 from os import PathLike
 from pathlib import Path
 from typing import Union
+from identifier import Identifier
 
 
 class Summarize:
@@ -13,13 +14,10 @@ class Summarize:
         self._by_task = []
         self._all_artifacts = []
 
-    def add(self, subject_id: str, wave: str, task: str, run: str, artifact: numpy.ndarray):
+    def add(self, identifier: Identifier, artifact: numpy.ndarray):
         """
         Add data to summaries
-        :param subject_id: Subject identifier
-        :param wave: Wave number
-        :param task: Task name
-        :param run: Run number
+        :param identifier: The subject, task, run identifier
         :param artifact: Array indicating if there is a motion artifact or not
         :return: None
         """
@@ -29,11 +27,13 @@ class Summarize:
         num_artifact_volumes = numpy.sum(artifact)
         percent = num_artifact_volumes / artifact.size * 100.0
 
-        self._by_run.append((subject_id, wave, task, run, num_artifact_volumes, percent))
-        self._by_task.append((subject_id, wave, task, num_artifact_volumes, percent))
+        self._by_run.append((identifier.subject_id, identifier.wave, identifier.task, identifier.run,
+                             num_artifact_volumes, percent))
+        self._by_task.append((identifier.subject_id, identifier.wave, identifier.task,
+                              num_artifact_volumes, percent))
 
         for v in artifact_volumes:
-            self._all_artifacts.append((subject_id, wave, task, v, 1))
+            self._all_artifacts.append((identifier.subject_id, identifier.wave, identifier.task, v, 1))
 
     def write(self):
         """
