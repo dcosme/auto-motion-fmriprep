@@ -43,16 +43,16 @@ class Summarize:
         Path(self._summary_dir).mkdir(parents=True, exist_ok=True)
 
         with open(self._summary_dir / (self._study + '_summaryRun.csv'), 'w') as csv_file:
-            bb = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
-            bb.writerow(["subjectID", "wave", "task", "run", "nVols", "percent"])
-            bb.writerows(self._by_run)
+            f = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
+            f.writerow(["subjectID", "wave", "task", "run", "nVols", "percent"])
+            f.writerows(self._by_run)
 
         with open(self._summary_dir / (self._study + '_summaryTask.csv'), 'w') as csv_file:
-            bb = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
-            bb.writerow(["subjectID", "wave", "task", "nVols", "percent"])
-            bb.writerows(self._by_task)
+            f = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
+            f.writerow(["subjectID", "wave", "task", "nVols", "percent"])
+            f.writerows(self._by_task)
 
         with open(self._summary_dir / (self._study + '_trashVols.csv'), 'w') as csv_file:
-            bb = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
-            bb.writerow(["subjectID", "wave", "task", "run", "volume", "trash"])
-            bb.writerows(self._all_artifacts)
+            f = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
+            f.writerow(["subjectID", "wave", "task", "run", "volume", "trash"])
+            f.writerows(self._all_artifacts)
