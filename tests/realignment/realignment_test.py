@@ -1,5 +1,6 @@
 from src.realignment import Realignment
 import numpy
+import pytest
 
 
 class TestRealignment:
@@ -24,6 +25,28 @@ class TestRealignment:
         expected_path = tmp_path / expected_file_name
 
         assert expected_path.exists()
+
+    def test_invalid_columns(self, tmp_path):
+        # Verify that invalid input data raises a ValueError
+        rp = Realignment(tmp_path)
+        subject_id = 'SUBJECT_ID'
+        wave = '1'
+        run = '1'
+        task = 'TASK'
+        data = numpy.array([(1.0, 2.0, 3.0)],
+                           dtype=[('invalid_column_1', 'f8'),
+                                  ('invalid_column_2', 'f8'),
+                                  ('invalid_column_3', 'f8')])
+        artifact = numpy.array([0.0])
+
+        with pytest.raises(ValueError):
+            rp.write(subject_id=subject_id,
+                     wave=wave,
+                     task=task,
+                     run=run,
+                     no_euclidean=False,
+                     data=data,
+                     artifact=artifact)
 
     def test_no_euclidean_false(self, tmp_path):
         rp = Realignment(tmp_path)

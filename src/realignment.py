@@ -17,6 +17,9 @@ class Realignment:
 
     def write(self, subject_id: str, wave: str, task: str, run: str, no_euclidean: bool, data: numpy.ndarray,
               artifact: numpy.ndarray):
+        if not set(self._column_names).issubset(set(data.dtype.names)):
+            raise ValueError('data does not contain required columns')
+
         # Create output directory if missing
         Path(self._output_dir).mkdir(parents=True, exist_ok=True)
 
