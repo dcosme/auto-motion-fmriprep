@@ -25,7 +25,7 @@ class Realignment:
         :param no_euclidean: If True, write raw translation and rotation.
         If False, write out the L2 norms of translation and rotation.
         :param data: confounds data
-        :param artifact:
+        :param artifact: Array indicating if there is a motion artifact or not
         :return: None
         """
         if not set(self._column_names).issubset(set(data.dtype.names)):
