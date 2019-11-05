@@ -1,6 +1,7 @@
 from typing import Union
 from os import PathLike
 from pathlib import Path
+from identifier import Identifier
 import numpy
 import numpy.lib.recfunctions
 
@@ -17,16 +18,25 @@ class Realignment:
         # Create root output directory if missing
         Path(self._output_dir).mkdir(parents=True, exist_ok=True)
 
-    def write(self, subject_id: str, wave: str, task: str, run: str, no_euclidean: bool, data: numpy.ndarray,
-              artifact: numpy.ndarray):
+    def write(self, identifier: Identifier, no_euclidean: bool, data: numpy.ndarray, artifact: numpy.ndarray):
+        """
+        Write realignment parameters
+        :param identifier: The subject, task, run identifier
+        :param no_euclidean: If True, write raw translation and rotation.
+        If False, write out the L2 norms of translation and rotation.
+        :param data: confounds data
+        :param artifact: Array indicating if there is a motion artifact or not
+        :return: None
+        """
         if not set(self._column_names).issubset(set(data.dtype.names)):
             raise ValueError('data does not contain required columns')
 
         # Create output directory if missing
-        path = Path(self._output_dir / f'sub-{subject_id}' / f'ses-wave{wave}' / 'func')
+        path = Path(self._output_dir / f'sub-{identifier.subject_id}' / f'ses-wave{identifier.wave}' / 'func')
         path.mkdir(parents=True, exist_ok=True)
 
-        file_name = f'sub-{subject_id}_ses-wave{wave}_task-{task}_acq-{run}-realignment_parameters.txt'
+        file_name = f'sub-{identifier.subject_id}_ses-wave{identifier.wave}_' \
+                    f'task-{identifier.task}_acq-{identifier.run}-realignment_parameters.txt'
 
         if not no_euclidean:
             translation_components = numpy.lib.recfunctions.structured_to_unstructured(data[self._column_names[0:3]])
