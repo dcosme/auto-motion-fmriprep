@@ -20,11 +20,11 @@ def yes_no_converter(s: bytes) -> int:
 class ConfoundsFileReader:
     """Reads confounds file for all subjects"""
 
-    def __init__(self, confounds_path: str):
+    def __init__(self, confounds_path: str, is_v1_1_format: bool = False):
         """
         :param confounds_path: Path root containing data files
         """
-        self._names = [
+        self._input_names = [
             'csf',
             'white_matter',
             'global_signal',
@@ -49,6 +49,7 @@ class ConfoundsFileReader:
             'rot_x',
             'rot_y',
             'rot_z']
+        self._output_names = self._input_names.copy()
 
         self._delimiter = '\t'
 
@@ -61,11 +62,38 @@ class ConfoundsFileReader:
         self._files = Path(confounds_path).glob('**/*confounds_regressors.tsv')
         # Extract the subject ID, wave number, task name, and run number from the file name
         self._pattern = 'sub-(.*)_ses-wave(\\d*)_task-(.*)_\\w*-(\\d*)_.*'
+        if is_v1_1_format:
+            self._files = Path(confounds_path).glob('**/*_confounds.tsv')
+            self._input_names = ['CSF',
+                                 'WhiteMatter',
+                                 'GlobalSignal',
+                                 'stdDVARS',
+                                 'nonstdDVARS',
+                                 'FramewiseDisplacement',
+                                 'tCompCor00',
+                                 'tCompCor01',
+                                 'tCompCor02',
+                                 'tCompCor03',
+                                 'tCompCor04',
+                                 'tCompCor05',
+                                 'aCompCor00',
+                                 'aCompCor01',
+                                 'aCompCor02',
+                                 'aCompCor03',
+                                 'aCompCor04',
+                                 'aCompCor05',
+                                 'X',
+                                 'Y',
+                                 'Z',
+                                 'RotX',
+                                 'RotY',
+                                 'RotZ']
 
     def get_size(self):
-        return len(self._names)
+        return len(self._input_names)
 
     def get_confounds(self) -> Tuple[Identifier, numpy.ndarray]:
+        identifier = Identifier()
         for f in self._files:
             match = re.search(self._pattern, str(f.name))
             if match:
@@ -75,7 +103,10 @@ class ConfoundsFileReader:
                                    missing_values='n/a',
                                    filling_values=0)
             # select only the desired columns, because confounds_regressors.tsv file has hundreds of confounds
-            yield (identifier, numpy.copy(tmp[self._names]))
+            reduced_data = numpy.copy(tmp[self._input_names])
+            # and rename the columns to consistent set of names.
+            reduced_data.dtype.names = self._output_names
+            yield (identifier, reduced_data)
 
     def get_training_data(self) -> numpy.ndarray:
         if self._training_files:
@@ -85,5 +116,5 @@ class ConfoundsFileReader:
                                    missing_values='n/a',
                                    filling_values=0,
                                    converters=self._converters)
-            names = ['artifact'] + self._names
+            names = ['artifact'] + self._input_names
             return numpy.copy(tmp[names])
