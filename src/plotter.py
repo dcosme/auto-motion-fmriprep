@@ -5,9 +5,14 @@ from identifier import Identifier
 
 
 class Plotter:
-    def __init__(self, output_dir: str, identifier: Identifier, data: numpy.ndarray):
+    def __init__(self, output_dir: str, identifier: Identifier, data: numpy.ndarray,
+                 height: float, width: float, dpi: int, format: str = 'png'):
         self._identifier = identifier
         self._data = data
+        self._height = height
+        self._width = width
+        self._dpi = dpi
+        self._format = format
 
         # Create root output directory if missing
         Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -47,4 +52,6 @@ class Plotter:
             ax.text(volume, column_data[i], volume,
                     horizontalalignment='center', verticalalignment='center', fontsize=7)
 
-        fig.savefig(self._output_dir / f'{column_name}.png', dpi=250, transparent=False, bbox_inches='tight')
+        fig.savefig(self._output_dir / f'{column_name}.{self._format}',
+                    dpi=self._dpi, transparent=False, bbox_inches='tight',
+                    height=self._height, width=self._width)
