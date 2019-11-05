@@ -63,7 +63,7 @@ class TestConfoundsFileReader:
         count = 0
         for _, data in c.get_confounds():
             assert data.shape == (2,)
-            assert len(data[0]) == len(c._input_names)
+            assert len(data[0]) == c.get_size()
             count += 1
 
         assert count == num_files
@@ -79,7 +79,7 @@ class TestConfoundsFileReader:
         # There are two lines of input data.
         # Length of data should be length of _names + 1, for the additional 'artifact' column in training data.
         assert data.shape == (2,)
-        assert len(data[0]) == len(c._input_names) + 1
+        assert len(data[0]) == c.get_size() + 1
 
     def test_v1_1_file_format(self, tmp_path, shared_datadir):
         # Verify that ConfoundsFileReader can read data in the V1.1 fmriprep format.
@@ -103,5 +103,5 @@ class TestConfoundsFileReader:
         # Assert that several files were read, and that the data has the "right" shape
         for _, data in c.get_confounds():
             assert data.shape == (2,)
-            assert len(data[0]) == len(c._input_names)
+            assert len(data[0]) == c.get_size()
             assert 'csf' in data.dtype.names
