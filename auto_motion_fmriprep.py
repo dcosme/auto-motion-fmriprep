@@ -36,11 +36,6 @@ def cli():
                         help='absolute path to folder containing training data',
                         dest='training_dir'
                         )
-    parser.add_argument('-l', '--level', action='store', required=True, type=str,
-                        help='Level of the classification that will be performed.',
-                        choices=['train', 'test'],
-                        dest='level'
-                        )
     parser.add_argument('-ne', '--no-euc', action='store_true', required=False, default=False,
                         help=('Do NOT use euclidean distance. Uses RAW realignment \
                             parameters instead. This arg SUPPRESSES euclidean distance \
