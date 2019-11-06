@@ -1,5 +1,6 @@
 from src.confounds_file_reader import ConfoundsFileReader
 import shutil
+from pathlib import Path
 
 
 class TestConfoundsFileReader:
@@ -7,7 +8,7 @@ class TestConfoundsFileReader:
         # Create a badly-named data file in test-controlled path
         shutil.copyfile((shared_datadir / 'test_development.tsv'), tmp_path / 'development_sample.tsv')
 
-        c = ConfoundsFileReader(tmp_path)
+        c = ConfoundsFileReader(tmp_path, Path.cwd())
 
         # Assert that get_confounds should not return any subject ID, wave number, task name or run number
         # when the file name is not in the expected format.
@@ -31,7 +32,7 @@ class TestConfoundsFileReader:
         data_file = confounds_path / file_name
         shutil.copyfile((shared_datadir / 'test_confounds.tsv'), data_file)
 
-        c = ConfoundsFileReader(confounds_path)
+        c = ConfoundsFileReader(confounds_path, Path.cwd())
 
         # Assert that data has a subject ID, wave number, task name and run number
         for i, _ in c.get_confounds():
@@ -57,7 +58,7 @@ class TestConfoundsFileReader:
             data_file = confounds_path / file_name
             shutil.copyfile((shared_datadir / 'test_confounds.tsv'), data_file)
 
-        c = ConfoundsFileReader(confounds_path)
+        c = ConfoundsFileReader(confounds_path, Path.cwd())
 
         # Assert that several files were read, and that the data has the "right" shape
         count = 0
@@ -69,10 +70,10 @@ class TestConfoundsFileReader:
         assert count == num_files
 
     def test_training_data(self, tmp_path, shared_datadir):
-        # Create a badly-named data file in test-controlled path
+        # Verify training data can be read
         shutil.copyfile((shared_datadir / 'test_development.tsv'), tmp_path / 'development_sample.tsv')
 
-        c = ConfoundsFileReader(tmp_path)
+        c = ConfoundsFileReader(tmp_path, tmp_path)
 
         data = c.get_training_data()
 
@@ -98,7 +99,7 @@ class TestConfoundsFileReader:
         data_file = confounds_path / file_name
         shutil.copyfile((shared_datadir / 'test_v1_1_confounds.tsv'), data_file)
 
-        c = ConfoundsFileReader(confounds_path, is_v1_1_format=True)
+        c = ConfoundsFileReader(confounds_path, Path.cwd(), is_v1_1_format=True)
 
         # Assert that several files were read, and that the data has the "right" shape
         for _, data in c.get_confounds():
