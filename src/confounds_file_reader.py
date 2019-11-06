@@ -1,5 +1,6 @@
+from os import PathLike
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Union
 from identifier import Identifier
 import numpy
 import re
@@ -20,9 +21,13 @@ def yes_no_converter(s: bytes) -> int:
 class ConfoundsFileReader:
     """Reads confounds file for all subjects"""
 
-    def __init__(self, confounds_path: str, is_v1_1_format: bool = False):
+    def __init__(self,
+                 confounds_path: Union[str, PathLike, Path],
+                 training_path: Union[str, PathLike, Path],
+                 is_v1_1_format: bool = False):
         """
         :param confounds_path: Path root containing data files
+        :param training_path: Path root containing training data files
         """
         self._input_names = [
             'csf',
@@ -54,7 +59,7 @@ class ConfoundsFileReader:
         self._delimiter = '\t'
 
         # Get training files, and add a converter for training / test data
-        self._training_files = Path(confounds_path).glob('**/development_sample.tsv')
+        self._training_files = Path(training_path).glob('**/development_sample.tsv')
         self._converters = {'artifact': yes_no_converter}
 
         # Get all the confounds_regressors.tsv files, which have format described here:

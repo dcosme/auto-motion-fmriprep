@@ -24,7 +24,7 @@ def cli():
                                      add_help=False,
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('-b', '--bids', metavar='BIDS Dir', action='store', required=True,
+    parser.add_argument('-b', '--bids', metavar='BIDS directory', action='store', required=True,
                         help='absolute path to your top level bids folder.',
                         dest='bids_dir'
                         )
@@ -32,10 +32,9 @@ def cli():
                         help='Study name.',
                         dest='study'
                         )
-    parser.add_argument('-l', '--level', action='store', required=True, type=str,
-                        help='Level of the classification that will be performed.',
-                        choices=['train', 'test'],
-                        dest='level'
+    parser.add_argument('-t', '--training', metavar='Training directory', action='store', required=True,
+                        help='absolute path to folder containing training data',
+                        dest='training_dir'
                         )
     parser.add_argument('-ne', '--no-euc', action='store_true', required=False, default=False,
                         help=('Do NOT use euclidean distance. Uses RAW realignment \
@@ -112,7 +111,7 @@ def main():
     args = cli()
 
     # Get the training data and train the classifier
-    c = ConfoundsFileReader(args.bids_dir)
+    c = ConfoundsFileReader(args.bids_dir, args.training_dir)
     data = c.get_training_data()
     classifier = Classifier(remove_field_name(data, 'artifact'), data['artifact'])
     classifier.train()
