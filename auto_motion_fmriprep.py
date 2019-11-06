@@ -48,7 +48,8 @@ def cli():
                         )
     parser.add_argument('-p', '--plot', action='append', type=str,
                         required=False, default=None,
-                        help='Space separated list of confounds to plot',
+                        help='Confound to plot, with markers indicating volumes with motion artifacts. '
+                             'This option can be repeated to create multiple figures.',
                         dest='plot_confounds',
                         choices=['csf',
                                  'white_matter',
