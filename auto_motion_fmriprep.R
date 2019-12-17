@@ -31,30 +31,93 @@ source('config.R')
 #------------------------------------------------------
 message('--------Loading confound files--------')
 
-fileList = list.files(confoundDir, pattern = 'bold_confounds.tsv', recursive = TRUE)
-
 dataset = data.frame()
+columnNames = c("subjectID", "wave", "task", "run", "volume", "CSF", "WhiteMatter", 
+                "GlobalSignal", "stdDVARS", "non.stdDVARS", "vx.wisestdDVARS", 
+                "FramewiseDisplacement", "tCompCor00", "tCompCor01", "tCompCor02", 
+                "tCompCor03", "tCompCor04", "tCompCor05", "aCompCor00", "aCompCor01", 
+                "aCompCor02", "aCompCor03", "aCompCor04", "aCompCor05", "Cosine00", 
+                "X", "Y", "Z", "RotX", "RotY", "RotZ")
 
-for (file in fileList) {
-  tmp = tryCatch(read_tsv(file.path(confoundDir, file)) %>% 
-                   mutate(file = file) %>%
-                   extract(file, c('subjectID', 'wave', 'task', 'run'),
-                           file.path('sub-.*','ses-.*', 'func', 'sub-(.*)_ses-(.*)_task-(.*)_(.*)_bold_confounds.tsv')) %>%
-                   mutate(wave = str_extract(wave, "[[:digit:]]+"),
-                          run = str_extract(run, "[[:digit:]]+"),
-                          wave = as.integer(wave),
-                          run = as.integer(run),
-                          stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", 0, stdDVARS)),
-                          `non-stdDVARS` = as.numeric(ifelse(`non-stdDVARS` %in% "n/a", 0, `non-stdDVARS`)),
-                          `vx-wisestdDVARS` = as.numeric(ifelse(`vx-wisestdDVARS` %in% "n/a", 0, `vx-wisestdDVARS`)),
-                          FramewiseDisplacement = as.numeric(ifelse(FramewiseDisplacement %in% "n/a", 0, FramewiseDisplacement)),
-                          volume = row_number()) %>%
-                   select(subjectID, wave, task, run, volume, everything()), error = function(e) message(file))
-  if (length(tmp) > 0) {
-    colnames(tmp) = gsub('-', '.', colnames(tmp))
-    dataset = bind_rows(dataset, tmp)
-    rm(tmp)
+if (oldfmriprep == TRUE) {
+  fileList = list.files(confoundDir, pattern = 'bold_confounds.tsv', recursive = TRUE)
+  
+  for (file in fileList) {
+    tmp = tryCatch(read_tsv(file.path(confoundDir, file)) %>% 
+                     mutate(file = file) %>%
+                     extract(file, c('subjectID', 'wave', 'task', 'run'),
+                             file.path('sub-.*','ses-.*', 'func', 'sub-(.*)_ses-(.*)_task-(.*)_(.*)_bold_confounds.tsv')) %>%
+                     mutate(wave = str_extract(wave, "[[:digit:]]+"),
+                            run = str_extract(run, "[[:digit:]]+"),
+                            wave = as.integer(wave),
+                            run = as.integer(run),
+                            stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", 0, stdDVARS)),
+                            `non-stdDVARS` = as.numeric(ifelse(`non-stdDVARS` %in% "n/a", 0, `non-stdDVARS`)),
+                            `vx-wisestdDVARS` = as.numeric(ifelse(`vx-wisestdDVARS` %in% "n/a", 0, `vx-wisestdDVARS`)),
+                            FramewiseDisplacement = as.numeric(ifelse(FramewiseDisplacement %in% "n/a", 0, FramewiseDisplacement)),
+                            volume = row_number()) %>%
+                     select(subjectID, wave, task, run, volume, everything()), error = function(e) message(file))
+    # add missing columns and select subset classifier columns
+    missingColumns = setdiff(columnNames, names(tmp))
+    tmp[missingColumns] = 0 
+    
+    tmp = tmp  %>%
+      select(subjectID, wave, task, run, volume, CSF, WhiteMatter, 
+             GlobalSignal, stdDVARS, non.stdDVARS, vx.wisestdDVARS, 
+             FramewiseDisplacement, tCompCor00, tCompCor01, tCompCor02, 
+             tCompCor03, tCompCor04, tCompCor05, aCompCor00, aCompCor01, 
+             aCompCor02, aCompCor03, aCompCor04, aCompCor05, Cosine00, 
+             X, Y, Z, RotX, RotY, RotZ)
+    
+    if (length(tmp) > 0) {
+      colnames(tmp) = gsub('-', '.', colnames(tmp))
+      dataset = bind_rows(dataset, tmp)
+      rm(tmp)
+    }
   }
+  
+} else {
+  
+  fileList = list.files(confoundDir, pattern = '.*confounds.*.tsv', recursive = TRUE)
+
+  for (file in fileList) {
+    tmp = tryCatch(read_tsv(file.path(confoundDir, file)) %>% 
+                     setNames(snakecase::to_upper_camel_case(names(.))) %>%
+                     setNames(gsub("AComp", "aComp", names(.))) %>%
+                     setNames(gsub("TComp", "tComp", names(.))) %>%
+                     setNames(gsub("Trans", "", names(.))) %>%
+                     mutate(file = file) %>%
+                     extract(file, c('subjectID', 'wave', 'task', 'run'),
+                             file.path('sub-.*','ses-.*', 'func', 'sub-(.*)_ses-(.*)_task-(.*)_(.*)_desc-confounds_regressors.tsv')) %>%
+                     rename("CSF" = Csf,
+                            "stdDVARS" = StdDvars,
+                            "non.stdDVARS" = Dvars) %>%
+                     mutate(wave = str_extract(wave, "[[:digit:]]+"),
+                            run = str_extract(run, "[[:digit:]]+"),
+                            wave = as.integer(wave),
+                            run = as.integer(run),
+                            #vx.wisestdDVARS = 0,
+                            volume = row_number()) %>%
+                     mutate_if(is.character, list(~ ifelse(. == "n/a", 0, .))) %>%
+                     mutate_at(vars(contains("DVARS"), contains("Framewise")), as.numeric), error = function(e) message(file))
+    
+    # add missing columns and select subset classifier columns
+    missingColumns = setdiff(columnNames, names(tmp))
+    tmp[missingColumns] = 0 
+    
+    tmp = tmp  %>%
+      select(subjectID, wave, task, run, volume, CSF, WhiteMatter, 
+             GlobalSignal, stdDVARS, non.stdDVARS, vx.wisestdDVARS, 
+             FramewiseDisplacement, tCompCor00, tCompCor01, tCompCor02, 
+             tCompCor03, tCompCor04, tCompCor05, aCompCor00, aCompCor01, 
+             aCompCor02, aCompCor03, aCompCor04, aCompCor05, Cosine00, 
+             X, Y, Z, RotX, RotY, RotZ)
+    
+    if (length(tmp) > 0) {
+      dataset = bind_rows(dataset, tmp)
+      rm(tmp)
+    }
+  }  
 }
 
 #------------------------------------------------------

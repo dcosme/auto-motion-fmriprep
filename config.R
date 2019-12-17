@@ -4,6 +4,7 @@
 # * rpDir = path to output directory to write new rp_txt files
 # * plotDir = path to output directory to write plots
 # * study = study name
+# * oldfmriprep = use TRUE if using version 1.1.8 or earlier; FALSE if 1.1.2 or later
 # * noRP = suppress new realignment parameter (rp_txt) text files; use TRUE or FALSE
 # * noPlots = suppress plots for each subject run; use TRUE or FALSE
 # * noEuclidean = do not use the Euclidean distance; use the raw realigment parameters instead
@@ -25,6 +26,7 @@ rpDir = '/projects/dsnlab/shared/tag/TAG_scripts/fMRI/fx/motion/auto-motion-fmri
 
 # variables
 study = 'TAG'
+oldfmriprep = FALSE
 noRP = FALSE
 noPlot = FALSE
 noEuclidean = FALSE
