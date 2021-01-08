@@ -246,22 +246,41 @@ if (noRP == FALSE) {
     fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_task-%s_run-%s_desc-motion_regressors.tsv', .$subjectID[[1]], .$task[[1]], .$run[[1]]))" 
   }
   
-  rp_files_written = rps %>%
-    mutate(subDir = file.path(outputDir, sprintf("sub-%s", subjectID))) %>%
-    select(subDir, everything()) %>%
-    arrange(subjectID, wave, task, run, volume) %>%
-    group_by(subjectID, wave, task, run, subDir) %>%
-    do({
-      fname = eval(parse(text = fnameString))
-      write.table(
-        .[,-c(1:6)],
-        fname,
-        quote = F,
-        sep = '\t',
-        row.names = F,
-        col.names = F)
-      data.frame(rp_file_name = fname)
-    })
+  if (noNames == TRUE) {
+    rp_files_written = rps %>%
+      mutate(subDir = file.path(outputDir, sprintf("sub-%s", subjectID))) %>%
+      select(subDir, everything()) %>%
+      arrange(subjectID, wave, task, run, volume) %>%
+      group_by(subjectID, wave, task, run, subDir) %>%
+      do({
+        fname = eval(parse(text = fnameString))
+        write.table(
+          .[,-c(1:6)],
+          fname,
+          quote = F,
+          sep = '\t',
+          row.names = F,
+          col.names = F)
+        data.frame(rp_file_name = fname)
+      })
+  } else {
+    rp_files_written = rps %>%
+      mutate(subDir = file.path(outputDir, sprintf("sub-%s", subjectID))) %>%
+      select(subDir, everything()) %>%
+      arrange(subjectID, wave, task, run, volume) %>%
+      group_by(subjectID, wave, task, run, subDir) %>%
+      do({
+        fname = eval(parse(text = fnameString))
+        write.table(
+          .[,-c(1:6)],
+          fname,
+          quote = F,
+          sep = '\t',
+          row.names = F,
+          col.names = T)
+        data.frame(rp_file_name = fname)
+      })
+  }
 }
 
 #------------------------------------------------------

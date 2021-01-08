@@ -5,6 +5,7 @@
 # * ses = include session; use TRUE if ses is part of the file name, use FALSE if not
 # * oldfmriprep = use TRUE if using version 1.1.8 or earlier; FALSE if 1.1.2 or later
 # * noRP = suppress motion regressor text files; use TRUE or FALSE
+# * nonames = suppress motion regressor text file colum namess; use TRUE or FALSE
 # * noPlots = suppress plots for each subject run; use TRUE or FALSE
 # * noEuclidean = do not use the Euclidean distance; use the raw realigment parameters instead
 #   when exporting motion regressors files; use TRUE or FALSE. If FALSE, motion regressors files will include the following columns:
@@ -26,6 +27,7 @@ study = 'MURI'
 ses = FALSE
 oldfmriprep = FALSE
 noRP = FALSE
+noNames = FALSE
 noPlot = FALSE
 noEuclidean = FALSE
 figIndicators = c('FramewiseDisplacement', 'GlobalSignal', 'stdDVARS')
