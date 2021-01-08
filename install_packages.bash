@@ -9,4 +9,4 @@
 
 module load R gcc
 
-Rscript --verbose -e "osuRepo = 'http://ftp.osuosl.org/pub/cran/'; if(!require(tidyverse)){ install.packages('tidyverse',repos=osuRepo) }; if(!require(caret)){ install.packages('caret',repos=osuRepo) }; message('Installation complete')"
+Rscript --verbose -e "osuRepo = 'http://ftp.osuosl.org/pub/cran/'; if(!require(tidyverse)){ install.packages('tidyverse',repos=osuRepo) }; if(!require(caret)){ install.packages('caret',repos=osuRepo) }; if(!require(randomForest)){ install.packages('randomForest',repos=osuRepo) }; if(!require(snakecase)){ install.packages('snakecase',repos=osuRepo) }; message('Installation complete')"

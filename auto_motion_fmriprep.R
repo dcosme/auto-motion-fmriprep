@@ -1,6 +1,6 @@
 # This script loads the fmriprep confound files, applies a machine learning classifier to 
 # predict motion artifacts, and returns summaries by task, task and run, and trash volumes only. 
-# It will also export new rp_txt files if writeRP = TRUE and plots if writePlots = TRUE.
+# It will also export new motion regressor files if writeRP = TRUE and plots if writePlots = TRUE.
 
 # Inputs:
 # * config.R = configuration file with user defined variables and paths
@@ -9,8 +9,8 @@
 # * study_summaryRun.csv = CSV file with summary by task and run
 # * study_summaryTask.csv = CSV file with summary by task only
 # * study_trashVols.csv = CSV file with trash volumes only
-# * if writeRP = TRUE, rp_txt files will be written to rpDir
-# * if writePlots = TRUE, plots for each subjects will be written to plotDir
+# * if writeRP = TRUE, rp_txt files will be written to outputDir/auto-motion-fmriprep/sub-[subject ID]
+# * if writePlots = TRUE, plots for each subjects will be written to outputDir/auto-motion-fmriprep/sub-[subject ID]
 
 #------------------------------------------------------
 # load/install packages
@@ -21,10 +21,27 @@ if (!require(tidyverse)) {
   install.packages('tidyverse', repos = osuRepo)
 }
 
+if (!require(snakecase)) {
+  install.packages('snakecase', repos = osuRepo)
+}
+
+if (!require(caret)) {
+  install.packages('caret', repos = osuRepo)
+}
+
+if (!require(randomForest)) {
+  install.packages('randomForest', repos = osuRepo)
+}
+
 #------------------------------------------------------
 # source the config file
 #------------------------------------------------------
 source('config.R')
+
+#------------------------------------------------------
+# define output path
+#------------------------------------------------------
+outputDir = file.path(outputDir, "auto-motion-fmriprep")
 
 #------------------------------------------------------
 # load confound files
@@ -43,10 +60,13 @@ if (oldfmriprep == TRUE) {
   fileList = list.files(confoundDir, pattern = 'bold_confounds.tsv', recursive = TRUE)
   
   for (file in fileList) {
+    fileRegex = '.*func/sub-(.*)_ses-(.*)_task-(.*)_(.*)_desc-.*.tsv'
+    fileVars = c('subjectID', 'wave', 'task', 'run')
     tmp = tryCatch(read_tsv(file.path(confoundDir, file)) %>% 
-                     mutate(file = file) %>%
-                     extract(file, c('subjectID', 'wave', 'task', 'run'),
-                             file.path('sub-.*','ses-.*', 'func', 'sub-(.*)_ses-(.*)_task-(.*)_(.*)_bold_confounds.tsv')) %>%
+                     mutate(file = ifelse(!grepl("ses", file), gsub("task", "ses-1_task", file), file),
+                            file = ifelse(!grepl("run", file), gsub("desc", "run-1_desc", file), file)) %>%
+                     extract(file, fileRegex,
+                             filePath) %>%
                      mutate(wave = str_extract(wave, "[[:digit:]]+"),
                             run = str_extract(run, "[[:digit:]]+"),
                             wave = as.integer(wave),
@@ -57,6 +77,7 @@ if (oldfmriprep == TRUE) {
                             FramewiseDisplacement = as.numeric(ifelse(FramewiseDisplacement %in% "n/a", 0, FramewiseDisplacement)),
                             volume = row_number()) %>%
                      select(subjectID, wave, task, run, volume, everything()), error = function(e) message(file))
+
     # add missing columns and select subset classifier columns
     missingColumns = setdiff(columnNames, names(tmp))
     tmp[missingColumns] = 0 
@@ -81,25 +102,26 @@ if (oldfmriprep == TRUE) {
   fileList = list.files(confoundDir, pattern = '.*confounds.*.tsv', recursive = TRUE)
 
   for (file in fileList) {
-    tmp = tryCatch(read_tsv(file.path(confoundDir, file)) %>% 
-                     setNames(snakecase::to_upper_camel_case(names(.))) %>%
-                     setNames(gsub("AComp", "aComp", names(.))) %>%
-                     setNames(gsub("TComp", "tComp", names(.))) %>%
-                     setNames(gsub("Trans", "", names(.))) %>%
-                     mutate(file = file) %>%
-                     extract(file, c('subjectID', 'wave', 'task', 'run'),
-                             file.path('sub-.*','ses-.*', 'func', 'sub-(.*)_ses-(.*)_task-(.*)_(.*)_desc-confounds_regressors.tsv')) %>%
-                     rename("CSF" = Csf,
-                            "stdDVARS" = StdDvars,
-                            "non.stdDVARS" = Dvars) %>%
-                     mutate(wave = str_extract(wave, "[[:digit:]]+"),
-                            run = str_extract(run, "[[:digit:]]+"),
-                            wave = as.integer(wave),
-                            run = as.integer(run),
-                            #vx.wisestdDVARS = 0,
-                            volume = row_number()) %>%
-                     mutate_if(is.character, list(~ ifelse(. == "n/a", 0, .))) %>%
-                     mutate_at(vars(contains("DVARS"), contains("Framewise")), as.numeric), error = function(e) message(file))
+
+      fileRegex = '.*func/sub-(.*)_ses-(.*)_task-(.*)_(.*)_desc-.*.tsv'
+      fileVars = c('subjectID', 'wave', 'task', 'run')
+      tmp = tryCatch(read_tsv(file.path(confoundDir, file)) %>%
+                       setNames(snakecase::to_upper_camel_case(names(.))) %>%
+                       setNames(gsub("AComp", "aComp", names(.))) %>%
+                       setNames(gsub("TComp", "tComp", names(.))) %>%
+                       setNames(gsub("Trans", "", names(.))) %>%
+                       mutate(file = ifelse(!grepl("ses", file), gsub("task", "ses-1_task", file), file),
+                              file = ifelse(!grepl("run", file), gsub("desc", "run-1_desc", file), file)) %>%
+                       extract(file, fileVars,
+                               fileRegex) %>%
+                       rename("CSF" = Csf,
+                              "stdDVARS" = StdDvars,
+                              "non.stdDVARS" = Dvars) %>%
+                       mutate(run = str_extract(run, "[[:digit:]]+"),
+                              run = as.integer(run),
+                              volume = row_number()) %>%
+                       mutate_if(is.character, list(~ ifelse(. == "n/a", 0, .))) %>%
+                       mutate_at(vars(contains("DVARS"), contains("Framewise")), as.numeric), error = function(e) message(file))
     
     # add missing columns and select subset classifier columns
     missingColumns = setdiff(columnNames, names(tmp))
@@ -159,15 +181,15 @@ summaryTrash = dataset %>%
   select(subjectID, wave, task, run, volume, trash)
 
 # create the summary directory if it does not exist
-if (!file.exists(summaryDir)) {
-  message(paste0(summaryDir, ' does not exist. Creating it now.'))
-  dir.create(summaryDir, recursive = TRUE)
+if (!file.exists(outputDir)) {
+  message(paste0(outputDir, ' does not exist. Creating it now.'))
+  dir.create(outputDir, recursive = TRUE)
 }
 
 # write files
-write.csv(summaryRun, file.path(summaryDir, paste0(study, '_summaryRun.csv')), row.names = FALSE)
-write.csv(summaryTask, file.path(summaryDir, paste0(study, '_summaryTask.csv')), row.names = FALSE)
-write.csv(summaryTrash, file.path(summaryDir, paste0(study, '_trashVols.csv')), row.names = FALSE)
+write.csv(summaryRun, file.path(outputDir, paste0(study, '_summaryRun.csv')), row.names = FALSE)
+write.csv(summaryTask, file.path(outputDir, paste0(study, '_summaryTask.csv')), row.names = FALSE)
+write.csv(summaryTrash, file.path(outputDir, paste0(study, '_trashVols.csv')), row.names = FALSE)
 
 #------------------------------------------------------
 # write rps
@@ -178,7 +200,7 @@ rps = dataset %>%
 
 # write files
 if (noRP == FALSE) {
-  message(sprintf('--------Writing text files to %s--------', rpDir))
+  message(sprintf('--------Writing text files to %s--------', outputDir))
   if (noEuclidean == FALSE) {
     message('Transforming realignment parameters to Euclidean distance')
     # ouput Euclidean distance and it's derivative rather than the original realignment parameters
@@ -208,23 +230,34 @@ if (noRP == FALSE) {
     
   }
   
-  # create the rp directory if it does not exist
-  if (!file.exists(rpDir)) {
-    message(paste0(rpDir, ' does not exist. Creating it now.'))
-    dir.create(rpDir, recursive = TRUE)
+  # create the subject output directories if they do not exist
+  for (sub in unique(rps$subjectID)) {
+    subDir = file.path(outputDir, sprintf("sub-%s", sub))
+    if (!file.exists(subDir)) {
+      message(paste0(subDir, ' does not exist. Creating it now.'))
+      dir.create(subDir, recursive = TRUE)
+    }
   }
   
   # write the files
+  if (ses == TRUE) {
+    fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_ses-%s_task-%s_run-%s_desc-motion_regressors.tsv', .$subjectID[[1]], .$wave[[1]], .$task[[1]], .$run[[1]]))" 
+  } else {
+    fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_task-%s_run-%s_desc-motion_regressors.tsv', .$subjectID[[1]], .$task[[1]], .$run[[1]]))" 
+  }
+  
   rp_files_written = rps %>%
+    mutate(subDir = file.path(outputDir, sprintf("sub-%s", subjectID))) %>%
+    select(subDir, everything()) %>%
     arrange(subjectID, wave, task, run, volume) %>%
-    group_by(subjectID, wave, task, run) %>%
+    group_by(subjectID, wave, task, run, subDir) %>%
     do({
-      fname = file.path(rpDir, paste('rp_', .$subjectID[[1]], '_', .$wave[[1]], '_', .$task[[1]], '_', .$run[[1]], '.txt', sep = ''))
+      fname = eval(parse(text = fnameString))
       write.table(
-        .[,-c(1:5)],
+        .[,-c(1:6)],
         fname,
         quote = F,
-        sep = '   ',
+        sep = '\t',
         row.names = F,
         col.names = F)
       data.frame(rp_file_name = fname)
@@ -236,17 +269,31 @@ if (noRP == FALSE) {
 #------------------------------------------------------
 # plot indicators values as a function of time for the motion indicators specified in config.R
 if (noPlot == FALSE) {
-  message(sprintf('--------Writing plots to %s--------', plotDir))
-  # create the plot directory if it does not exist
-  if (!file.exists(plotDir)) {
-    message(paste0(plotDir, ' does not exist. Creating it now.'))
-    dir.create(plotDir, recursive = TRUE)
+  message(sprintf('--------Writing plots to %s--------', outputDir))
+  
+  # create the subject output directories if they do not exist
+  for (sub in unique(rps$subjectID)) {
+    subDir = file.path(outputDir, sprintf("sub-%s", sub))
+    if (!file.exists(subDir)) {
+      message(paste0(subDir, ' does not exist. Creating it now.'))
+      dir.create(subDir, recursive = TRUE)
+    }
   }
   
   # save the plots
+  if (ses == TRUE) {
+    fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_ses-%s_task-%s_run-%s%s', .$subjectID[[1]], .$wave[[1]], .$task[[1]], .$run[[1]], figFormat))" 
+    pnameString = "sprintf('%s  %s  %s  %s', .$subjectID[[1]], .$wave[[1]], .$task[[1]], .$run[[1]])"
+  } else {
+    fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_task-%s_run-%s%s', .$subjectID[[1]], .$task[[1]], .$run[[1]], figFormat))" 
+    pnameString = "sprintf('%s  %s  %s', .$subjectID[[1]], .$task[[1]], .$run[[1]])"
+  }
+  
+  
   plots_written = dataset %>% 
     mutate(label = ifelse(grepl(1, trash), as.character(volume), ''),
-           code = ifelse(trash == 1, 'trash', NA)) %>%
+           code = ifelse(trash == 1, 'trash', NA),
+           subDir = file.path(outputDir, sprintf("sub-%s", subjectID))) %>%
     gather(indicator, value, figIndicators) %>%
     group_by(subjectID, wave, task, run) %>%
     do({
@@ -256,12 +303,12 @@ if (noPlot == FALSE) {
         geom_text(data = filter(., subjectID == .$subjectID[[1]] & wave == .$wave[[1]] & task == .$task[[1]] & run == .$run[[1]]), aes(label = label), size = 2) +
         facet_grid(indicator ~ ., scales = 'free') +
         scale_color_manual(values = "#E4B80E") +
-        labs(title = paste0(.$subjectID[[1]], "  ", .$wave[[1]], "  ", .$task[[1]], "  ", .$run[[1]]),
+        labs(title = eval(parse(text = pnameString)),
              y = "value\n",
              x = "\nvolume") +
         theme_minimal(base_size = 10) +
         theme(legend.position = "none")
-      ggsave(plot, file = file.path(plotDir, paste0(.$subjectID[[1]], '_', .$wave[[1]], '_', .$task[[1]], '_', .$run[[1]], figFormat)), height = figHeight, width = figWidth, dpi = figDPI)
+      ggsave(plot, file = eval(parse(text = fnameString)), height = figHeight, width = figWidth, dpi = figDPI)
       data.frame()
     })
 }
