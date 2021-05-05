@@ -198,37 +198,38 @@ write.csv(summaryTrash, file.path(outputDir, paste0(study, '_trashVols.csv')), r
 rps = dataset %>%
   select(subjectID, wave, task, run, volume, X, Y, Z, RotX, RotY, RotZ, trash)
 
+if (noEuclidean == FALSE) {
+  message('Transforming realignment parameters to Euclidean distance')
+  # ouput Euclidean distance and it's derivative rather than the original realignment parameters
+  
+  # define function to calculate Euclidean distance (i.e. the L2 norm)
+  l2norm3ddf = function(a,b,c){
+    aDF = data.frame(a,b,c)
+    apply(aDF, 1, function(vect) norm(matrix(vect), 'f'))
+  }
+  
+  # For the radian to arc-length conversion, remember: "An angle of 1 radian 
+  # refers to a central angle whose subtending arc is equal in length to the 
+  # radius." http://www.themathpage.com/aTrig/arc-length.htm
+  # If we multiply the radian output of the realignment parameters by the average 
+  # head radius of 50mm, we get a rotational displacement from the origin at the 
+  # outside of an average skull.
+  rps = rps %>%
+    group_by(subjectID, wave, task, run) %>%
+    mutate(RotX = 50*RotX,
+           RotY = 50*RotY,
+           RotZ = 50*RotZ,
+           trans = l2norm3ddf(X, Y, Z),
+           rot = l2norm3ddf(RotX, RotY, RotZ),
+           deriv.trans = c(0, diff(trans)),
+           deriv.rot = c(0, diff(rot))) %>%
+    select(subjectID, wave, task, run, volume, trans, rot, deriv.trans, deriv.rot, trash)
+  
+}
+
 # write files
 if (noRP == FALSE) {
   message(sprintf('--------Writing text files to %s--------', outputDir))
-  if (noEuclidean == FALSE) {
-    message('Transforming realignment parameters to Euclidean distance')
-    # ouput Euclidean distance and it's derivative rather than the original realignment parameters
-    
-    # define function to calculate Euclidean distance (i.e. the L2 norm)
-    l2norm3ddf = function(a,b,c){
-      aDF = data.frame(a,b,c)
-      apply(aDF, 1, function(vect) norm(matrix(vect), 'f'))
-    }
-    
-    # For the radian to arc-length conversion, remember: "An angle of 1 radian 
-    # refers to a central angle whose subtending arc is equal in length to the 
-    # radius." http://www.themathpage.com/aTrig/arc-length.htm
-    # If we multiply the radian output of the realignment parameters by the average 
-    # head radius of 50mm, we get a rotational displacement from the origin at the 
-    # outside of an average skull.
-    rps = rps %>%
-      group_by(subjectID, wave, task, run) %>%
-      mutate(RotX = 50*RotX,
-             RotY = 50*RotY,
-             RotZ = 50*RotZ,
-             trans = l2norm3ddf(X, Y, Z),
-             rot = l2norm3ddf(RotX, RotY, RotZ),
-             deriv.trans = c(0, diff(trans)),
-             deriv.rot = c(0, diff(rot))) %>%
-      select(subjectID, wave, task, run, volume, trans, rot, deriv.trans, deriv.rot, trash)
-    
-  }
   
   # create the subject output directories if they do not exist
   for (sub in unique(rps$subjectID)) {
