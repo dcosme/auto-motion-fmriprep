@@ -32,7 +32,7 @@ If `noPlot = FALSE`, it will export timecourse plots with volumes predicted to h
 
 ![example plot](example_plot.png)
 
-All output is in the [BIDS](https://bids.neuroimaging.io/).
+All output is in the [BIDS](https://bids.neuroimaging.io/) format.
 
 You can either run this script directly in R or RStudio, or submit it as a job on a computational grid. If you are using [slurm](https://slurm.schedmd.com/) for job scheduling, you can modify the `install_packages.bash` and `run_auto_motion.bash` scripts to run the code on a copmutational cluster.
 
