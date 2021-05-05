@@ -161,7 +161,7 @@ dataset = dataset %>%
 #------------------------------------------------------
 # summarize data and write csv files
 #------------------------------------------------------
-message(sprintf('--------Writing summaries to %s--------', summaryDir))
+message(sprintf('--------Writing summaries to %s--------', outputDir))
 
 # summarize by task and run
 summaryRun = dataset %>% 
