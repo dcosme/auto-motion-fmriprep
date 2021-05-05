@@ -36,5 +36,13 @@ All output is in the [BIDS](https://bids.neuroimaging.io/) format.
 
 You can either run this script directly in R or RStudio, or submit it as a job on a computational grid. If you are using [slurm](https://slurm.schedmd.com/) for job scheduling, you can modify the `install_packages.bash` and `run_auto_motion.bash` scripts to run the code on a copmutational cluster.
 
+## Citation
+
+If you use this tool, please use the following citation:
+
+```
+Cosme D., Flournoy J. C., Vijayakumar N. (2018). auto-motion-fmriprep: A tool for automated assessment of motion artifacts (Version v2.0). Zenodo: 10.5281/zenodo.1412131
+```
+
 ## Acknowledgements
 Thank you to [John C. Flournoy](https://github.com/jflournoy) and [Nandita Vijayakumar](https://github.com/nandivij) for their help developing this code. Huge thank you to Gracie Arnone, Oscar Bernat, Cameron Hansen, Leticia Hayes, & Nathalie Verhoeven for helping hand code motion artifacts.
