@@ -9,9 +9,11 @@ Scripts for the automated assessment of motion artifacts in fMRI data using fmri
 **If you use `fmriprep` and would like to contiribute to this project by sharing your `confounds.tsv` files (and potentially hand coded visual artifacts), please email me!**
 
 ## About
-These scripts use machine learning and the motion indicators from [fmriprep](https://github.com/poldracklab/fmriprep) to detect motion artifacts in fMRI data and returns a "trash" regressor (i.e. a series of 1s and 0s denoting the presence or absence of motion artifacts) that can be used in first level models along with other nuisance regressors. 
+These scripts use machine learning and the motion indicators from [fMRIPrep](https://github.com/poldracklab/fmriprep) to detect motion artifacts in fMRI data and returns a "trash"  regressor (i.e. a series of 1s and 0s denoting the presence or absence of motion artifacts) that can be used in first level models along with other nuisance regressors. The percentage of volumes containing positive predictions of motion artifacts can also be used to exclude task runs (e.g. task runs with > 10% flagged) and participants.
 
 The machine learning classifier was developed to accurately classify visual motion artifacts (i.e. striping) using data from the [Developmental Social Neuroscience Lab](https://github.com/dsnlab) at the University of Oregon. This classifier can be applied to new data to predict motion artifacts using these scripts. For more information about the development and validation of the classifier, please check out my poster from [FLUX 2018](https://dcosme.github.io/posters/Cosme_FLUX_2018.pdf).
+
+Although the classifier was trained with data from an older version of fMRIPrep, it is compatible with newer versions. 
 
 ## Requirements
 * fMRI data must be preprocessed using `fmriprep` and each sequence you want to model must have a `confounds.tsv` file
@@ -29,6 +31,8 @@ If `noRP = FALSE`, it will also export a text file with realignment parameters (
 If `noPlot = FALSE`, it will export timecourse plots with volumes predicted to have motion artifacts highlighted on confounds of your choice. Here is an example plot using framewise displacement, global signal, and standardized DVARS:
 
 ![example plot](example_plot.png)
+
+All output is in the [BIDS](https://bids.neuroimaging.io/).
 
 You can either run this script directly in R or RStudio, or submit it as a job on a computational grid. If you are using [slurm](https://slurm.schedmd.com/) for job scheduling, you can modify the `install_packages.bash` and `run_auto_motion.bash` scripts to run the code on a copmutational cluster.
 
