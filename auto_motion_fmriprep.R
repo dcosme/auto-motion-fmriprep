@@ -56,17 +56,19 @@ columnNames = c("subjectID", "wave", "task", "run", "volume", "CSF", "WhiteMatte
                 "aCompCor02", "aCompCor03", "aCompCor04", "aCompCor05", "Cosine00", 
                 "X", "Y", "Z", "RotX", "RotY", "RotZ")
 
-if (oldfmriprep == TRUE) {
+fileRegex = '.*func/sub-(.*)_ses-(.*)_task-(.*)_run-(.*)_desc-.*.tsv'
+fileVars = c('subjectID', 'wave', 'task', 'run')
+
+if (gsub("\\.", "", version) <= 118) {
   fileList = list.files(confoundDir, pattern = 'bold_confounds.tsv', recursive = TRUE)
   
   for (file in fileList) {
-    fileRegex = '.*func/sub-(.*)_ses-(.*)_task-(.*)_(.*)_desc-.*.tsv'
-    fileVars = c('subjectID', 'wave', 'task', 'run')
     tmp = tryCatch(read_tsv(file.path(confoundDir, file)) %>% 
-                     mutate(file = ifelse(!grepl("ses", file), gsub("task", "ses-1_task", file), file),
+                     mutate(file = ifelse(!grepl("desc", file), gsub("bold", "desc-bold", file), file),
+                            file = ifelse(!grepl("ses", file), gsub("task", "ses-1_task", file), file),
                             file = ifelse(!grepl("run", file), gsub("desc", "run-1_desc", file), file)) %>%
-                     extract(file, fileRegex,
-                             filePath) %>%
+                     extract(file, fileVars,
+                             fileRegex) %>%
                      mutate(wave = str_extract(wave, "[[:digit:]]+"),
                             run = str_extract(run, "[[:digit:]]+"),
                             wave = as.integer(wave),
@@ -103,8 +105,6 @@ if (oldfmriprep == TRUE) {
 
   for (file in fileList) {
 
-      fileRegex = '.*func/sub-(.*)_ses-(.*)_task-(.*)_(.*)_desc-.*.tsv'
-      fileVars = c('subjectID', 'wave', 'task', 'run')
       tmp = tryCatch(read_tsv(file.path(confoundDir, file)) %>%
                        setNames(snakecase::to_upper_camel_case(names(.))) %>%
                        setNames(gsub("AComp", "aComp", names(.))) %>%
@@ -219,11 +219,11 @@ if (noEuclidean == FALSE) {
     mutate(RotX = 50*RotX,
            RotY = 50*RotY,
            RotZ = 50*RotZ,
-           trans = l2norm3ddf(X, Y, Z),
-           rot = l2norm3ddf(RotX, RotY, RotZ),
-           deriv.trans = c(0, diff(trans)),
-           deriv.rot = c(0, diff(rot))) %>%
-    select(subjectID, wave, task, run, volume, trans, rot, deriv.trans, deriv.rot, trash)
+           euclidean_trans = l2norm3ddf(X, Y, Z),
+           euclidean_rot = l2norm3ddf(RotX, RotY, RotZ),
+           euclidean_trans_deriv = c(0, diff(euclidean_trans)),
+           euclidean_rot_deriv = c(0, diff(euclidean_rot))) %>%
+    select(subjectID, wave, task, run, volume, euclidean_trans, euclidean_rot, euclidean_trans_deriv, euclidean_rot_deriv, trash)
   
 }
 
