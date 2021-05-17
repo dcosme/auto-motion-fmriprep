@@ -242,9 +242,9 @@ if (noRP == FALSE) {
   
   # write the files
   if (ses == TRUE) {
-    fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_ses-%s_task-%s_run-%s_desc-motion_regressors.tsv', .$subjectID[[1]], .$wave[[1]], .$task[[1]], .$run[[1]]))" 
+    fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_ses-%s_task-%s_run-%s_desc-motion_regressors.txt', .$subjectID[[1]], .$wave[[1]], .$task[[1]], .$run[[1]]))" 
   } else {
-    fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_task-%s_run-%s_desc-motion_regressors.tsv', .$subjectID[[1]], .$task[[1]], .$run[[1]]))" 
+    fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_task-%s_run-%s_desc-motion_regressors.txt', .$subjectID[[1]], .$task[[1]], .$run[[1]]))" 
   }
   
   if (noNames == TRUE) {
